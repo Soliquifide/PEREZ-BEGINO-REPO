@@ -129,7 +129,7 @@ public class BulletHellGame extends JPanel
 
     // ── NEW: Sound (spacegun) ─────────────────────────────────────────
     private SourceDataLine soundLine;
-    private int soundCooldown = 0; // prevents sound spam every 4 frames
+    private int soundCooldown = 0; // prevents sound spam every 4 framess
 
     // ═════════════════════════════════════════════════════════════════
     public BulletHellGame() {
