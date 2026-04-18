@@ -4,28 +4,25 @@ import javax.sound.sampled.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Random;
 
 public class BulletHellGame extends JPanel
         implements ActionListener, KeyListener, MouseListener, MouseMotionListener {
 
-    // ── Dimensions ───────────────────────────────────────────────────
     static final int WIDTH = 600;
     static final int HEIGHT = 800;
 
-    // ── Game States ──────────────────────────────────────────────────
     static final int STATE_MENU = 0;
     static final int STATE_SETTINGS = 1;
     static final int STATE_DIFF_SEL = 2;
-    static final int STATE_CLASS_SEL = 5; // NEW
+    static final int STATE_CLASS_SEL = 5;
     static final int STATE_PLAYING = 3;
     static final int STATE_GAME_OVER = 4;
 
-    // ── Fire Modes ───────────────────────────────────────────────────
     static final int FIRE_MOUSE = 0;
     static final int FIRE_SPACE = 1;
 
-    // ── PowerUp Types ────────────────────────────────────────────────
     static final int PU_SPEED = 0;
     static final int PU_DOUBLE_SHOT = 1;
     static final int PU_TRIPLE_SHOT = 2;
@@ -33,42 +30,58 @@ public class BulletHellGame extends JPanel
     static final int PU_BOMB = 4;
     static final int PU_COUNT = 5;
 
-    // ── Heat System Constants ─────────────────────────────────────────
+    // Machine Gunner heat
     static final int MAX_HEAT = 100;
     static final int HEAT_PER_SHOT = 5;
     static final int HEAT_COOL_RATE = 1;
     static final int OVERHEAT_FRAMES = 120;
     static final int FIRE_RATE = 4;
 
-    // ── Game state ───────────────────────────────────────────────────
+    // Nova class
+    static final int CLASS_MACHINE_GUNNER = 0;
+    static final int CLASS_NOVA = 1;
+    static final int NOVA_CHARGE_FRAMES = 90; // 1.5 s
+    static final int NOVA_COOLDOWN_FRAMES = 60; // 1 s
+    static final int NOVA_LASER_FRAMES = 18; // beam visible duration
+    static final int NOVA_LASER_WIDTH = 18;
+
+    // Game state
     private int gameState = STATE_MENU;
     private int score = 0;
     private int wave = 1;
     private int frameCount = 0;
     private boolean bossTransition = false;
 
-    // ── Settings ─────────────────────────────────────────────────────
+    // Settings
     private int fireMode = FIRE_MOUSE;
     private boolean musicEnabled = true;
     private int musicVolPct = 75;
     private int difficulty = 1;
+    private int selectedClass = CLASS_MACHINE_GUNNER;
 
-    // ── Input tracking ───────────────────────────────────────────────
+    // Input
     private boolean mouseFireHeld = false;
     private boolean draggingSlider = false;
     private final boolean[] keys = new boolean[256];
-
-    // ── Mouse position (for aiming) ───────────────────────────────────
     private int mouseX = WIDTH / 2;
     private int mouseY = 0;
 
-    // ── Heat / Overheat ───────────────────────────────────────────────
+    // Machine Gunner heat
     private int heat = 0;
     private boolean overheated = false;
     private int overheatTimer = 0;
     private boolean firingThisFrame = false;
 
-    // ── PowerUp timers ───────────────────────────────────────────────
+    // Nova state
+    private boolean novaCharging = false;
+    private int novaChargeTimer = 0;
+    private boolean novaLaserActive = false;
+    private int novaLaserTimer = 0;
+    private int novaCooldownTimer = 0;
+    private int novaBeamX1, novaBeamY1, novaBeamX2, novaBeamY2;
+    private final ArrayList<NovaParticle> novaParticles = new ArrayList<>();
+
+    // PowerUp timers
     private boolean hasShield = false;
     private int shieldTimer = 0;
     private boolean doubleShot = false;
@@ -78,11 +91,10 @@ public class BulletHellGame extends JPanel
     private boolean speedBoosted = false;
     private int speedBoostTimer = 0;
 
-    // ── Pickup notification ───────────────────────────────────────────
     private String pickupMsg = "";
     private int pickupTimer = 0;
 
-    // ── Game objects ─────────────────────────────────────────────────
+    // Game objects
     private Player player;
     private Boss boss;
     private final ArrayList<Bullet> playerBullets = new ArrayList<>();
@@ -90,48 +102,47 @@ public class BulletHellGame extends JPanel
     private final ArrayList<PowerUp> powerUps = new ArrayList<>();
     private final Random rand = new Random();
 
-    // ── MIDI ─────────────────────────────────────────────────────────
+    // MIDI
     private Sequencer sequencer;
     private Synthesizer synth;
 
-    // ── Static star field ─────────────────────────────────────────────
+    // Stars
     private final int[] starX = new int[120];
     private final int[] starY = new int[120];
     private final int[] starSz = new int[120];
 
     private Timer gameTimer;
 
-    // ── Main-menu buttons ────────────────────────────────────────────
+    // Shake
+    private int shakeTimer = 0;
+    private int shakeIntensity = 0;
+
+    // Sound
+    private SourceDataLine soundLine;
+    private int soundCooldown = 0;
+
+    // Buttons
     private final Rectangle btnStart = new Rectangle(WIDTH / 2 - 110, 360, 220, 54);
     private final Rectangle btnSettings = new Rectangle(WIDTH / 2 - 110, 430, 220, 54);
     private final Rectangle btnQuit = new Rectangle(WIDTH / 2 - 110, 500, 220, 54);
 
-    // ── Settings buttons + slider ─────────────────────────────────────
     private final Rectangle btnFireMouse = new Rectangle(WIDTH / 2 - 120, 175, 240, 46);
     private final Rectangle btnFireSpace = new Rectangle(WIDTH / 2 - 120, 231, 240, 46);
     private final Rectangle btnMusicToggle = new Rectangle(WIDTH / 2 - 120, 375, 240, 46);
     private final Rectangle sliderTrack = new Rectangle(WIDTH / 2 - 110, 440, 220, 18);
     private final Rectangle btnSettBack = new Rectangle(WIDTH / 2 - 100, 700, 200, 50);
 
-    // ── Difficulty-select buttons ─────────────────────────────────────
     private final Rectangle btnDiffEasy = new Rectangle(WIDTH / 2 - 120, 300, 240, 80);
     private final Rectangle btnDiffNormal = new Rectangle(WIDTH / 2 - 120, 400, 240, 80);
     private final Rectangle btnDiffHard = new Rectangle(WIDTH / 2 - 120, 500, 240, 80);
     private final Rectangle btnDiffBack = new Rectangle(WIDTH / 2 - 100, 640, 200, 50);
 
-    // ── Class-select buttons ──────────────────────────────────────────
-    private final Rectangle btnClassMachineGunner = new Rectangle(WIDTH / 2 - 150, 280, 300, 220);
-    private final Rectangle btnClassBack = new Rectangle(WIDTH / 2 - 100, 650, 200, 50);
+    // Class cards — side by side
+    private final Rectangle btnClassMachineGunner = new Rectangle(WIDTH / 2 - 310, 180, 280, 380);
+    private final Rectangle btnClassNova = new Rectangle(WIDTH / 2 + 30, 180, 280, 380);
+    private final Rectangle btnClassBack = new Rectangle(WIDTH / 2 - 100, 660, 200, 50);
 
-    // ── NEW: Vibration / Screen-shake state ──────────────────────────
-    private int shakeTimer = 0;
-    private int shakeIntensity = 0;
-
-    // ── NEW: Sound (spacegun) ─────────────────────────────────────────
-    private SourceDataLine soundLine;
-    private int soundCooldown = 0; // prevents sound spam every 4 framess
-
-    // ═════════════════════════════════════════════════════════════════
+    // =================================================================
     public BulletHellGame() {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setBackground(new Color(6, 6, 22));
@@ -139,25 +150,19 @@ public class BulletHellGame extends JPanel
         addKeyListener(this);
         addMouseListener(this);
         addMouseMotionListener(this);
-
         Random sr = new Random(7777);
         for (int i = 0; i < starX.length; i++) {
             starX[i] = sr.nextInt(WIDTH);
             starY[i] = sr.nextInt(HEIGHT);
             starSz[i] = sr.nextInt(3) + 1;
         }
-
         initMusic();
         initSound();
         gameTimer = new Timer(16, this);
         gameTimer.start();
     }
 
-    // ═════════════════════════════════════════════════════════════════
-    // SPACEGUN SOUND (NEW)
-    // Synthesises a sci-fi "pew" by mixing a short frequency-swept sine
-    // with noise — all in software, no external files needed.
-    // ═════════════════════════════════════════════════════════════════
+    // ── Sound ─────────────────────────────────────────────────────────
     private void initSound() {
         try {
             AudioFormat fmt = new AudioFormat(44100, 16, 1, true, false);
@@ -170,43 +175,53 @@ public class BulletHellGame extends JPanel
         }
     }
 
-    /**
-     * Plays a short "spacegun pew" asynchronously so it never blocks the game loop.
-     */
     private void playSpacegunSound() {
         if (soundLine == null)
             return;
         new Thread(() -> {
             try {
-                int sampleRate = 44100;
-                // Very short — 80 ms
-                int samples = sampleRate * 80 / 1000;
+                int sr = 44100, samples = sr * 80 / 1000;
                 byte[] buf = new byte[samples * 2];
                 for (int i = 0; i < samples; i++) {
-                    double t = (double) i / sampleRate;
-                    // Frequency sweeps rapidly from 1400 Hz down to 300 Hz
-                    double freq = 1400 - 13750 * t;
-                    if (freq < 80)
-                        freq = 80;
-                    double sine = Math.sin(2 * Math.PI * freq * t);
-                    // Add a thin layer of noise for "laser grit"
-                    double noise = (Math.random() * 2 - 1) * 0.18;
-                    // Envelope: fast attack, exponential decay
-                    double env = Math.exp(-t * 38.0);
-                    double sample = (sine * 0.82 + noise) * env;
-                    short s = (short) Math.max(-32768, Math.min(32767, (int) (sample * 22000)));
-                    buf[i * 2] = (byte) (s & 0xFF);
-                    buf[i * 2 + 1] = (byte) ((s >> 8) & 0xFF);
+                    double t = (double) i / sr;
+                    double freq = Math.max(80, 1400 - 13750 * t);
+                    double s = (Math.sin(2 * Math.PI * freq * t) * 0.82 + (Math.random() * 2 - 1) * 0.18)
+                            * Math.exp(-t * 38) * 22000;
+                    short v = (short) Math.max(-32768, Math.min(32767, (int) s));
+                    buf[i * 2] = (byte) (v & 0xFF);
+                    buf[i * 2 + 1] = (byte) ((v >> 8) & 0xFF);
                 }
                 soundLine.write(buf, 0, buf.length);
             } catch (Exception ignored) {
             }
-        }, "sfx-spacegun").start();
+        }, "sfx-gun").start();
     }
 
-    // ═════════════════════════════════════════════════════════════════
-    // MIDI MUSIC (unchanged)
-    // ═════════════════════════════════════════════════════════════════
+    private void playNovaLaserSound() {
+        if (soundLine == null)
+            return;
+        new Thread(() -> {
+            try {
+                int sr = 44100, samples = sr * 220 / 1000;
+                byte[] buf = new byte[samples * 2];
+                for (int i = 0; i < samples; i++) {
+                    double t = (double) i / sr;
+                    double freq = 200 + 3200 * t;
+                    double wave = Math.sin(2 * Math.PI * freq * t) * 0.6
+                            + Math.sin(2 * Math.PI * freq * 1.5 * t) * 0.25;
+                    double crackle = (Math.random() * 2 - 1) * 0.3 * Math.exp(-t * 8);
+                    double env = Math.min(1.0, t * 20) * Math.exp(-t * 3.5);
+                    short v = (short) Math.max(-32768, Math.min(32767, (int) ((wave + crackle) * env * 28000)));
+                    buf[i * 2] = (byte) (v & 0xFF);
+                    buf[i * 2 + 1] = (byte) ((v >> 8) & 0xFF);
+                }
+                soundLine.write(buf, 0, buf.length);
+            } catch (Exception ignored) {
+            }
+        }, "sfx-nova").start();
+    }
+
+    // ── MIDI ──────────────────────────────────────────────────────────
     private void initMusic() {
         try {
             synth = MidiSystem.getSynthesizer();
@@ -240,13 +255,12 @@ public class BulletHellGame extends JPanel
         MetaMessage mm = new MetaMessage();
         mm.setMessage(0x51, new byte[] { (byte) (us >> 16), (byte) (us >> 8), (byte) us }, 3);
         tt.add(new MidiEvent(mm, 0));
-
         Track lead = seq.createTrack();
         programChange(lead, 0, 80, 0);
-        int[] mel = { 72, 74, 76, 79, 79, 76, 74, 72, 74, 76, 77, 81, 79, 77, 76, 74,
-                72, 76, 79, 84, 83, 81, 79, 77, 76, 74, 72, 71, 72, 0, 0, 0 };
-        int[] mDur = { 12, 12, 12, 18, 6, 12, 12, 12, 12, 12, 12, 18, 6, 12, 12, 12,
-                12, 12, 12, 18, 6, 12, 12, 12, 12, 12, 12, 12, 24, 24, 24, 24 };
+        int[] mel = { 72, 74, 76, 79, 79, 76, 74, 72, 74, 76, 77, 81, 79, 77, 76, 74, 72, 76, 79, 84, 83, 81, 79, 77,
+                76, 74, 72, 71, 72, 0, 0, 0 };
+        int[] mDur = { 12, 12, 12, 18, 6, 12, 12, 12, 12, 12, 12, 18, 6, 12, 12, 12, 12, 12, 12, 18, 6, 12, 12, 12, 12,
+                12, 12, 12, 24, 24, 24, 24 };
         for (int rep = 0; rep < 8; rep++) {
             long t = rep * 480L;
             for (int i = 0; i < mel.length; i++) {
@@ -255,11 +269,10 @@ public class BulletHellGame extends JPanel
                 t += mDur[i];
             }
         }
-
         Track harm = seq.createTrack();
         programChange(harm, 1, 80, 0);
-        int[] hm = { 60, 62, 64, 67, 67, 64, 62, 60, 62, 64, 65, 69, 67, 65, 64, 62,
-                60, 64, 67, 72, 71, 69, 67, 65, 64, 62, 60, 59, 60, 0, 0, 0 };
+        int[] hm = { 60, 62, 64, 67, 67, 64, 62, 60, 62, 64, 65, 69, 67, 65, 64, 62, 60, 64, 67, 72, 71, 69, 67, 65, 64,
+                62, 60, 59, 60, 0, 0, 0 };
         for (int rep = 0; rep < 8; rep++) {
             long t = rep * 480L;
             for (int i = 0; i < hm.length; i++) {
@@ -268,7 +281,6 @@ public class BulletHellGame extends JPanel
                 t += mDur[i];
             }
         }
-
         Track bass = seq.createTrack();
         programChange(bass, 2, 38, 0);
         int[] roots = { 48, 50, 48, 53 }, fifths = { 55, 57, 55, 60 };
@@ -280,7 +292,6 @@ public class BulletHellGame extends JPanel
             note(bass, 2, f, 100, b + 48, 20);
             note(bass, 2, r, 80, b + 72, 10);
         }
-
         Track drums = seq.createTrack();
         for (int bar = 0; bar < 24; bar++) {
             long b = bar * 96L;
@@ -303,9 +314,9 @@ public class BulletHellGame extends JPanel
         t.add(new MidiEvent(new ShortMessage(ShortMessage.PROGRAM_CHANGE, ch, prog, 0), tick));
     }
 
-    // ═════════════════════════════════════════════════════════════════
+    // =================================================================
     // GAME LOOP
-    // ═════════════════════════════════════════════════════════════════
+    // =================================================================
     @Override
     public void actionPerformed(ActionEvent e) {
         if (gameState == STATE_PLAYING)
@@ -315,23 +326,30 @@ public class BulletHellGame extends JPanel
 
     private void update() {
         frameCount++;
-
-        // ── Shake timer countdown ─────────────────────────────────────
         if (shakeTimer > 0)
             shakeTimer--;
         if (soundCooldown > 0)
             soundCooldown--;
 
-        // ── Determine if player wants to fire ────────────────────────
         boolean wantsFire = (fireMode == FIRE_SPACE && keys[KeyEvent.VK_SPACE])
                 || (fireMode == FIRE_MOUSE && mouseFireHeld);
 
-        // ── Movement — slowed while firing ───────────────────────────
-        firingThisFrame = wantsFire && !overheated;
-        int spd = player.speed + (speedBoosted ? 3 : 0);
-        if (firingThisFrame)
-            spd = Math.max(2, (int) (spd * 0.55));
+        int baseSpd = player.speed + (speedBoosted ? 3 : 0);
+        int spd = baseSpd;
 
+        if (selectedClass == CLASS_MACHINE_GUNNER) {
+            firingThisFrame = wantsFire && !overheated;
+            if (firingThisFrame)
+                spd = Math.max(2, (int) (spd * 0.55));
+            updateMachineGunner(wantsFire);
+        } else {
+            firingThisFrame = false;
+            if (novaCharging || novaLaserActive)
+                spd = Math.max(2, (int) (spd * 0.60));
+            updateNova(wantsFire);
+        }
+
+        // Movement
         if (keys[KeyEvent.VK_LEFT] || keys[KeyEvent.VK_A])
             player.x -= spd;
         if (keys[KeyEvent.VK_RIGHT] || keys[KeyEvent.VK_D])
@@ -343,18 +361,7 @@ public class BulletHellGame extends JPanel
         player.x = Math.max(0, Math.min(WIDTH - player.size, player.x));
         player.y = Math.max(0, Math.min(HEIGHT - player.size, player.y));
 
-        // ── Heat / Overheat logic ─────────────────────────────────────
-        if (overheated) {
-            if (--overheatTimer <= 0) {
-                overheated = false;
-                heat = 0;
-            }
-        } else {
-            if (!wantsFire)
-                heat = Math.max(0, heat - HEAT_COOL_RATE);
-        }
-
-        // ── Power-up timers ───────────────────────────────────────────
+        // PowerUp timers
         if (shieldTimer > 0 && --shieldTimer == 0)
             hasShield = false;
         if (doubleShotTimer > 0 && --doubleShotTimer == 0)
@@ -366,74 +373,16 @@ public class BulletHellGame extends JPanel
         if (pickupTimer > 0)
             pickupTimer--;
 
-        // ── Firing ───────────────────────────────────────────────────
-        if (!overheated && wantsFire && frameCount % FIRE_RATE == 0) {
-            int pcx = player.x + player.size / 2;
-            int pcy = player.y + player.size / 2;
-            double dx = mouseX - pcx;
-            double dy = mouseY - pcy;
-            double len = Math.sqrt(dx * dx + dy * dy);
-            double bulletSpeed = 14.0;
-            double bvx = 0, bvy = -bulletSpeed;
-            if (len > 1) {
-                bvx = (dx / len) * bulletSpeed;
-                bvy = (dy / len) * bulletSpeed;
-            }
-
-            int bx = pcx, by = pcy;
-            if (tripleShot) {
-                double perpX = -bvy / bulletSpeed;
-                double perpY = bvx / bulletSpeed;
-                playerBullets.add(new Bullet(bx, by, bvx, bvy, Color.CYAN, false));
-                playerBullets.add(new Bullet(bx + perpX * 10, by + perpY * 10, bvx * 0.92 + perpX * 2.5,
-                        bvy * 0.92 + perpY * 2.5, Color.CYAN, false));
-                playerBullets.add(new Bullet(bx - perpX * 10, by - perpY * 10, bvx * 0.92 - perpX * 2.5,
-                        bvy * 0.92 - perpY * 2.5, Color.CYAN, false));
-                heat += HEAT_PER_SHOT * 3;
-            } else if (doubleShot) {
-                double perpX = -bvy / bulletSpeed;
-                double perpY = bvx / bulletSpeed;
-                playerBullets.add(new Bullet(bx + perpX * 8, by + perpY * 8, bvx, bvy, Color.CYAN, false));
-                playerBullets.add(new Bullet(bx - perpX * 8, by - perpY * 8, bvx, bvy, Color.CYAN, false));
-                heat += HEAT_PER_SHOT * 2;
-            } else {
-                playerBullets.add(new Bullet(bx, by, bvx, bvy, Color.CYAN, false));
-                heat += HEAT_PER_SHOT;
-            }
-
-            // ── NEW: Spacegun sound + screen vibration ────────────────
-            if (soundCooldown == 0) {
-                playSpacegunSound();
-                soundCooldown = FIRE_RATE; // one sound per burst window
-            }
-            // Small shake: intensity 2, lasts 3 frames — rapid bursts stack briefly
-            shakeTimer = Math.min(shakeTimer + 3, 6);
-            shakeIntensity = 2;
-
-            if (heat >= MAX_HEAT) {
-                heat = MAX_HEAT;
-                overheated = true;
-                overheatTimer = OVERHEAT_FRAMES;
-                // Bigger shake on overheat
-                shakeTimer = 18;
-                shakeIntensity = 5;
-                pickupMsg = "OVERHEATED!";
-                pickupTimer = OVERHEAT_FRAMES;
-            }
-        }
-
-        // ── Timed power-up drop ───────────────────────────────────────
+        // Timed power-up
         if (frameCount % 360 == 0 && !bossTransition) {
             int type = (frameCount / 360) % PU_COUNT;
-            boolean alreadyActive = (type == PU_SPEED && speedBoosted)
-                    || (type == PU_DOUBLE_SHOT && doubleShot)
-                    || (type == PU_TRIPLE_SHOT && tripleShot)
-                    || (type == PU_SHIELD && hasShield);
-            if (!alreadyActive)
+            boolean already = (type == PU_SPEED && speedBoosted) || (type == PU_DOUBLE_SHOT && doubleShot)
+                    || (type == PU_TRIPLE_SHOT && tripleShot) || (type == PU_SHIELD && hasShield);
+            if (!already)
                 powerUps.add(new PowerUp(rand.nextInt(WIDTH - 80) + 40, -60, type));
         }
 
-        // ── Power-up movement & collection ────────────────────────────
+        // Power-up collection
         for (int i = powerUps.size() - 1; i >= 0; i--) {
             PowerUp p = powerUps.get(i);
             p.update();
@@ -442,20 +391,42 @@ public class BulletHellGame extends JPanel
                 continue;
             }
             int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
-            Rectangle pBox = new Rectangle(pcx - 20, pcy - 20, 40, 40);
-            if (player.alive && p.getBounds().intersects(pBox)) {
+            if (player.alive && p.getBounds().intersects(new Rectangle(pcx - 20, pcy - 20, 40, 40))) {
                 applyPowerUp(p.type);
                 powerUps.remove(i);
             }
         }
 
-        // ── Boss update ───────────────────────────────────────────────
+        // Boss
         if (!bossTransition) {
             boss.update(frameCount);
             spawnBossPattern();
         }
 
-        // ── Player bullets vs boss ────────────────────────────────────
+        // Nova laser vs boss
+        if (selectedClass == CLASS_NOVA && novaLaserActive && !bossTransition && boss.alive) {
+            if (laserHitsBoss(boss.getBounds())) {
+                boss.hp -= 0.01;
+                score += 6;
+                if (boss.hp <= 0) {
+                    boss.alive = false;
+                    score += 500;
+                    wave++;
+                    bossTransition = true;
+                    novaLaserActive = false;
+                    playerBullets.clear();
+                    enemyBullets.clear();
+                    Timer t = new Timer(1800, ev -> {
+                        boss = new Boss(WIDTH / 2 - 40, 60, wave);
+                        bossTransition = false;
+                    });
+                    t.setRepeats(false);
+                    t.start();
+                }
+            }
+        }
+
+        // Bullets vs boss
         for (int i = playerBullets.size() - 1; i >= 0; i--) {
             Bullet b = playerBullets.get(i);
             b.update();
@@ -468,13 +439,11 @@ public class BulletHellGame extends JPanel
                 boss.hp--;
                 score += 10;
                 if (rand.nextInt(20) == 0) {
-                    int dropType = rand.nextInt(PU_COUNT);
-                    boolean dupActive = (dropType == PU_SPEED && speedBoosted)
-                            || (dropType == PU_DOUBLE_SHOT && doubleShot)
-                            || (dropType == PU_TRIPLE_SHOT && tripleShot)
-                            || (dropType == PU_SHIELD && hasShield);
-                    if (!dupActive)
-                        powerUps.add(new PowerUp(boss.x + boss.width / 2, boss.y + boss.height, dropType));
+                    int dt = rand.nextInt(PU_COUNT);
+                    boolean dup = (dt == PU_SPEED && speedBoosted) || (dt == PU_DOUBLE_SHOT && doubleShot)
+                            || (dt == PU_TRIPLE_SHOT && tripleShot) || (dt == PU_SHIELD && hasShield);
+                    if (!dup)
+                        powerUps.add(new PowerUp(boss.x + boss.width / 2, boss.y + boss.height, dt));
                 }
                 if (boss.hp <= 0) {
                     boss.alive = false;
@@ -494,7 +463,7 @@ public class BulletHellGame extends JPanel
             }
         }
 
-        // ── Enemy bullets vs player ───────────────────────────────────
+        // Enemy bullets vs player
         for (int i = enemyBullets.size() - 1; i >= 0; i--) {
             Bullet b = enemyBullets.get(i);
             b.update();
@@ -521,15 +490,163 @@ public class BulletHellGame extends JPanel
                 break;
             }
         }
+
+        // Nova particles
+        Iterator<NovaParticle> it = novaParticles.iterator();
+        while (it.hasNext()) {
+            if (!it.next().update())
+                it.remove();
+        }
     }
 
-    // ── Boss patterns (unchanged) ─────────────────────────────────────
+    // ── Machine Gunner logic ──────────────────────────────────────────
+    private void updateMachineGunner(boolean wantsFire) {
+        if (overheated) {
+            if (--overheatTimer <= 0) {
+                overheated = false;
+                heat = 0;
+            }
+        } else if (!wantsFire)
+            heat = Math.max(0, heat - HEAT_COOL_RATE);
+
+        if (!overheated && wantsFire && frameCount % FIRE_RATE == 0) {
+            int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
+            double dx = mouseX - pcx, dy = mouseY - pcy, len = Math.sqrt(dx * dx + dy * dy), bs = 14;
+            double bvx = 0, bvy = -bs;
+            if (len > 1) {
+                bvx = (dx / len) * bs;
+                bvy = (dy / len) * bs;
+            }
+            if (tripleShot) {
+                double px = -bvy / bs, py = bvx / bs;
+                playerBullets.add(new Bullet(pcx, pcy, bvx, bvy, Color.CYAN, false));
+                playerBullets.add(new Bullet(pcx + px * 10, pcy + py * 10, bvx * 0.92 + px * 2.5, bvy * 0.92 + py * 2.5,
+                        Color.CYAN, false));
+                playerBullets.add(new Bullet(pcx - px * 10, pcy - py * 10, bvx * 0.92 - px * 2.5, bvy * 0.92 - py * 2.5,
+                        Color.CYAN, false));
+                heat += HEAT_PER_SHOT * 3;
+            } else if (doubleShot) {
+                double px = -bvy / bs, py = bvx / bs;
+                playerBullets.add(new Bullet(pcx + px * 8, pcy + py * 8, bvx, bvy, Color.CYAN, false));
+                playerBullets.add(new Bullet(pcx - px * 8, pcy - py * 8, bvx, bvy, Color.CYAN, false));
+                heat += HEAT_PER_SHOT * 2;
+            } else {
+                playerBullets.add(new Bullet(pcx, pcy, bvx, bvy, Color.CYAN, false));
+                heat += HEAT_PER_SHOT;
+            }
+            if (soundCooldown == 0) {
+                playSpacegunSound();
+                soundCooldown = FIRE_RATE;
+            }
+            shakeTimer = Math.min(shakeTimer + 3, 6);
+            shakeIntensity = 2;
+            if (heat >= MAX_HEAT) {
+                heat = MAX_HEAT;
+                overheated = true;
+                overheatTimer = OVERHEAT_FRAMES;
+                shakeTimer = 18;
+                shakeIntensity = 5;
+                pickupMsg = "OVERHEATED!";
+                pickupTimer = OVERHEAT_FRAMES;
+            }
+        }
+    }
+
+    // ── Nova logic ────────────────────────────────────────────────────
+    private void updateNova(boolean wantsFire) {
+        int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
+
+        if (novaCooldownTimer > 0)
+            novaCooldownTimer--;
+
+        // Laser beam ticking down
+        if (novaLaserActive) {
+            if (--novaLaserTimer <= 0) {
+                novaLaserActive = false;
+                novaCooldownTimer = NOVA_COOLDOWN_FRAMES;
+            }
+            return;
+        }
+
+        // Still cooling down — cancel any charge attempt silently
+        if (novaCooldownTimer > 0) {
+            novaCharging = false;
+            novaChargeTimer = 0;
+            return;
+        }
+
+        if (wantsFire) {
+            novaCharging = true;
+            novaChargeTimer = Math.min(novaChargeTimer + 1, NOVA_CHARGE_FRAMES);
+
+            // Spiral charge particles
+            double angle = frameCount * 0.35;
+            double radius = 40 + 20 * (1.0 - (double) novaChargeTimer / NOVA_CHARGE_FRAMES);
+            for (int i = 0; i < 2; i++) {
+                double a = angle + Math.PI * i;
+                double px = pcx + Math.cos(a) * radius + (rand.nextDouble() - 0.5) * 8;
+                double py = pcy + Math.sin(a) * radius + (rand.nextDouble() - 0.5) * 8;
+                double vx = (pcx - px) * 0.12 + (rand.nextDouble() - 0.5) * 1.5;
+                double vy = (pcy - py) * 0.12 + (rand.nextDouble() - 0.5) * 1.5;
+                float cf = (float) novaChargeTimer / NOVA_CHARGE_FRAMES;
+                Color pc = new Color((int) (80 + 175 * cf), (int) (80 + 160 * cf), 255, 200);
+                novaParticles.add(new NovaParticle(px, py, vx, vy, pc, 14 + rand.nextInt(10)));
+            }
+
+            if (novaChargeTimer >= NOVA_CHARGE_FRAMES)
+                fireNovaLaser(pcx, pcy);
+        } else {
+            // Bleed charge when trigger released
+            if (novaCharging) {
+                novaChargeTimer -= 3;
+                if (novaChargeTimer <= 0) {
+                    novaChargeTimer = 0;
+                    novaCharging = false;
+                    novaParticles.clear();
+                }
+            }
+        }
+    }
+
+    private void fireNovaLaser(int pcx, int pcy) {
+        novaCharging = false;
+        novaChargeTimer = 0;
+        novaLaserActive = true;
+        novaLaserTimer = NOVA_LASER_FRAMES;
+        double dx = mouseX - pcx, dy = mouseY - pcy, len = Math.sqrt(dx * dx + dy * dy);
+        if (len < 1) {
+            dx = 0;
+            dy = -1;
+            len = 1;
+        }
+        double nx = dx / len, ny = dy / len;
+        novaBeamX1 = pcx;
+        novaBeamY1 = pcy;
+        novaBeamX2 = (int) (pcx + nx * 900);
+        novaBeamY2 = (int) (pcy + ny * 900);
+        shakeTimer = 22;
+        shakeIntensity = 7;
+        playNovaLaserSound();
+        // Burst particles at origin
+        for (int i = 0; i < 30; i++) {
+            double a = rand.nextDouble() * Math.PI * 2, sp = 1.5 + rand.nextDouble() * 4;
+            novaParticles.add(new NovaParticle(pcx, pcy, Math.cos(a) * sp, Math.sin(a) * sp,
+                    new Color(60, 160 + rand.nextInt(95), 255, 230), 20 + rand.nextInt(15)));
+        }
+    }
+
+    private boolean laserHitsBoss(Rectangle box) {
+        int hw = NOVA_LASER_WIDTH / 2;
+        Rectangle fat = new Rectangle(box.x - hw, box.y - hw, box.width + hw * 2, box.height + hw * 2);
+        return fat.intersectsLine(novaBeamX1, novaBeamY1, novaBeamX2, novaBeamY2);
+    }
+
+    // ── Boss patterns ─────────────────────────────────────────────────
     private void spawnBossPattern() {
         if (!boss.alive)
             return;
         int cx = boss.x + boss.width / 2, cy = boss.y + boss.height;
         double dm = new double[] { 0.7, 1.0, 1.5 }[difficulty];
-
         if (frameCount % 60 == 0) {
             int cnt = 12 + wave * 2;
             for (int i = 0; i < cnt; i++) {
@@ -599,28 +716,24 @@ public class BulletHellGame extends JPanel
         pickupTimer = 120;
     }
 
-    // ═════════════════════════════════════════════════════════════════
+    // =================================================================
     // RENDERING
-    // ═════════════════════════════════════════════════════════════════
+    // =================================================================
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-        // ── NEW: Apply screen-shake transform while firing ────────────
         int shakeX = 0, shakeY = 0;
         if (shakeTimer > 0 && gameState == STATE_PLAYING) {
             shakeX = rand.nextInt(shakeIntensity * 2 + 1) - shakeIntensity;
             shakeY = rand.nextInt(shakeIntensity * 2 + 1) - shakeIntensity;
         }
         g2.translate(shakeX, shakeY);
-
         g2.setColor(new Color(6, 6, 22));
-        g2.fillRect(-10, -10, WIDTH + 20, HEIGHT + 20); // slightly larger to cover shake edges
+        g2.fillRect(-10, -10, WIDTH + 20, HEIGHT + 20);
         drawStarfield(g2);
-
         switch (gameState) {
             case STATE_MENU:
                 drawMenu(g2);
@@ -633,7 +746,7 @@ public class BulletHellGame extends JPanel
                 break;
             case STATE_CLASS_SEL:
                 drawClassSelect(g2);
-                break; // NEW
+                break;
             case STATE_PLAYING:
                 drawGame(g2);
                 break;
@@ -642,8 +755,6 @@ public class BulletHellGame extends JPanel
                 drawGameOver(g2);
                 break;
         }
-
-        // Reset transform
         g2.translate(-shakeX, -shakeY);
     }
 
@@ -666,7 +777,7 @@ public class BulletHellGame extends JPanel
         }
     }
 
-    // ── Main menu (unchanged) ──────────────────────────────────────────
+    // ── Menu ──────────────────────────────────────────────────────────
     private void drawMenu(Graphics2D g2) {
         g2.setColor(new Color(255, 60, 60, 160));
         for (int i = 0; i < 6; i++) {
@@ -695,10 +806,10 @@ public class BulletHellGame extends JPanel
         drawBtn(g2, btnQuit, "QUIT", true);
         g2.setFont(new Font("Arial", Font.PLAIN, 12));
         g2.setColor(new Color(80, 80, 120));
-        g2.drawString("v3.2", WIDTH - 40, HEIGHT - 10);
+        g2.drawString("v3.3", WIDTH - 40, HEIGHT - 10);
     }
 
-    // ── Settings (unchanged) ──────────────────────────────────────────
+    // ── Settings ──────────────────────────────────────────────────────
     private void drawSettings(Graphics2D g2) {
         centeredTitle(g2, "SETTINGS", 80);
         divider(g2, 90);
@@ -746,156 +857,177 @@ public class BulletHellGame extends JPanel
         g2.setStroke(new BasicStroke(1));
     }
 
-    // ── Difficulty select (unchanged) ─────────────────────────────────
+    // ── Diff select ───────────────────────────────────────────────────
     private void drawDiffSelect(Graphics2D g2) {
         centeredTitle(g2, "SELECT DIFFICULTY", 100);
         divider(g2, 112);
         g2.setFont(new Font("Arial", Font.ITALIC, 14));
         g2.setColor(new Color(160, 160, 230));
-        String sub = "Choose your challenge — click to start!";
+        String sub = "Choose your challenge";
         g2.drawString(sub, WIDTH / 2 - g2.getFontMetrics().stringWidth(sub) / 2, 150);
-        drawDiffBtn(g2, btnDiffEasy, "EASY", new Color(60, 200, 80), "Slower bullets", "5 lives to spend",
-                difficulty == 0);
+        drawDiffBtn(g2, btnDiffEasy, "EASY", new Color(60, 200, 80), "Slower bullets", "5 lives", difficulty == 0);
         drawDiffBtn(g2, btnDiffNormal, "NORMAL", new Color(0, 180, 255), "Standard pace", "3 lives", difficulty == 1);
-        drawDiffBtn(g2, btnDiffHard, "HARD", new Color(255, 80, 60), "Faster bullets", "Only 2 lives", difficulty == 2);
+        drawDiffBtn(g2, btnDiffHard, "HARD", new Color(255, 80, 60), "Faster bullets", "2 lives", difficulty == 2);
         drawBtn(g2, btnDiffBack, "BACK", true);
     }
 
-    private void drawDiffBtn(Graphics2D g2, Rectangle r, String title, Color accent,
-            String line1, String line2, boolean selected) {
-        if (selected) {
+    private void drawDiffBtn(Graphics2D g2, Rectangle r, String title, Color accent, String l1, String l2,
+            boolean sel) {
+        if (sel) {
             g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 40));
             g2.fillRoundRect(r.x - 5, r.y - 5, r.width + 10, r.height + 10, 16, 16);
         }
-        g2.setColor(selected ? new Color(15, 20, 60) : new Color(10, 10, 30));
+        g2.setColor(sel ? new Color(15, 20, 60) : new Color(10, 10, 30));
         g2.fillRoundRect(r.x, r.y, r.width, r.height, 12, 12);
         g2.setColor(accent);
-        g2.setStroke(new BasicStroke(selected ? 2.5f : 1.2f));
+        g2.setStroke(new BasicStroke(sel ? 2.5f : 1.2f));
         g2.drawRoundRect(r.x, r.y, r.width, r.height, 12, 12);
         g2.setStroke(new BasicStroke(1));
         g2.setFont(new Font("Arial", Font.BOLD, 20));
-        g2.setColor(selected ? Color.WHITE : new Color(180, 180, 220));
+        g2.setColor(sel ? Color.WHITE : new Color(180, 180, 220));
         FontMetrics fm = g2.getFontMetrics();
         g2.drawString(title, r.x + r.width / 2 - fm.stringWidth(title) / 2, r.y + 28);
         g2.setFont(new Font("Arial", Font.PLAIN, 13));
-        g2.setColor(selected ? new Color(210, 230, 255) : new Color(110, 110, 160));
-        g2.drawString("• " + line1, r.x + 20, r.y + 50);
-        g2.drawString("• " + line2, r.x + 20, r.y + 68);
+        g2.setColor(sel ? new Color(210, 230, 255) : new Color(110, 110, 160));
+        g2.drawString("• " + l1, r.x + 20, r.y + 50);
+        g2.drawString("• " + l2, r.x + 20, r.y + 68);
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // NEW: Class Selection Screen
-    // ─────────────────────────────────────────────────────────────────
+    // ── Class select — two-card layout ────────────────────────────────
     private void drawClassSelect(Graphics2D g2) {
-        // Title
-        centeredTitle(g2, "SELECT CLASS", 85);
-        divider(g2, 97);
-
-        g2.setFont(new Font("Arial", Font.ITALIC, 14));
+        centeredTitle(g2, "SELECT CLASS", 75);
+        divider(g2, 87);
+        g2.setFont(new Font("Arial", Font.ITALIC, 13));
         g2.setColor(new Color(160, 160, 230));
-        String sub = "Choose your pilot — more classes coming soon!";
-        g2.drawString(sub, WIDTH / 2 - g2.getFontMetrics().stringWidth(sub) / 2, 130);
+        String sub = "Pick your pilot — click once to select, again to start";
+        g2.drawString(sub, WIDTH / 2 - g2.getFontMetrics().stringWidth(sub) / 2, 118);
 
-        // ── Machine Gunner card ───────────────────────────────────────
-        Rectangle r = btnClassMachineGunner;
-        Color accent = new Color(0, 220, 255);
+        drawClassCard(g2, btnClassMachineGunner, CLASS_MACHINE_GUNNER,
+                "MACHINE\nGUNNER", new Color(0, 220, 255),
+                "Spray and pray.\nOverheat at your own risk.",
+                new int[] { 5, 4, 3, 2 }, selectedClass == CLASS_MACHINE_GUNNER);
 
-        // Glow
-        g2.setColor(new Color(0, 200, 255, 28));
-        g2.fillRoundRect(r.x - 8, r.y - 8, r.width + 16, r.height + 16, 22, 22);
+        drawClassCard(g2, btnClassNova, CLASS_NOVA,
+                "NOVA", new Color(130, 80, 255),
+                "Hold to charge a laser beam.\nOne shot, massive impact.",
+                new int[] { 2, 1, 3, 4 }, selectedClass == CLASS_NOVA);
 
+        drawBtn(g2, btnClassBack, "BACK", true);
+    }
+
+    private void drawClassCard(Graphics2D g2, Rectangle r, int classId, String titleRaw,
+            Color accent, String descRaw, int[] stats, boolean selected) {
+        // Outer glow
+        if (selected) {
+            g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 30));
+            g2.fillRoundRect(r.x - 8, r.y - 8, r.width + 16, r.height + 16, 22, 22);
+        }
         // Card body
-        g2.setColor(new Color(8, 18, 55));
+        g2.setColor(selected ? new Color(8, 15, 50) : new Color(10, 10, 28));
         g2.fillRoundRect(r.x, r.y, r.width, r.height, 14, 14);
-
-        // Accent border
-        g2.setColor(accent);
-        g2.setStroke(new BasicStroke(2.5f));
+        // Border
+        g2.setColor(selected ? accent : new Color(50, 50, 100));
+        g2.setStroke(new BasicStroke(selected ? 2.5f : 1.2f));
         g2.drawRoundRect(r.x, r.y, r.width, r.height, 14, 14);
         g2.setStroke(new BasicStroke(1));
 
         // SELECTED badge
-        g2.setColor(accent);
-        g2.fillRoundRect(r.x + r.width - 88, r.y + 10, 78, 22, 8, 8);
-        g2.setFont(new Font("Arial", Font.BOLD, 11));
-        g2.setColor(new Color(6, 6, 22));
-        g2.drawString("SELECTED", r.x + r.width - 84, r.y + 25);
+        if (selected) {
+            g2.setColor(accent);
+            g2.fillRoundRect(r.x + r.width - 82, r.y + 10, 72, 20, 8, 8);
+            g2.setFont(new Font("Arial", Font.BOLD, 10));
+            g2.setColor(new Color(6, 6, 22));
+            g2.drawString("SELECTED", r.x + r.width - 78, r.y + 23);
+        }
 
-        // Ship icon (scaled-up mini-ship)
-        int sx = r.x + 44, sy = r.y + 26;
-        g2.setColor(Color.CYAN);
-        g2.fillPolygon(new int[] { sx + 16, sx, sx + 32 }, new int[] { sy, sy + 32, sy + 32 }, 3);
-        g2.setColor(new Color(200, 255, 255));
-        g2.fillOval(sx + 8, sy + 9, 16, 16);
-        // Engine glow
-        g2.setColor(new Color(0, 100, 255, 120));
-        g2.fillOval(sx + 8, sy + 28, 16, 12);
+        // Ship icon
+        int shipCX = r.x + r.width / 2, shipY = r.y + 20;
+        if (classId == CLASS_MACHINE_GUNNER) {
+            g2.setColor(Color.CYAN);
+            g2.fillPolygon(new int[] { shipCX, shipCX - 18, shipCX + 18 }, new int[] { shipY, shipY + 36, shipY + 36 },
+                    3);
+            g2.setColor(new Color(200, 255, 255));
+            g2.fillOval(shipCX - 7, shipY + 9, 14, 14);
+            g2.setColor(new Color(0, 100, 255, 120));
+            g2.fillOval(shipCX - 7, shipY + 30, 14, 10);
+        } else {
+            // Nova — sleek purple with wings
+            g2.setColor(new Color(160, 100, 255));
+            g2.fillPolygon(new int[] { shipCX, shipCX - 10, shipCX + 10 }, new int[] { shipY, shipY + 36, shipY + 36 },
+                    3);
+            g2.setColor(new Color(100, 60, 200));
+            g2.fillPolygon(new int[] { shipCX - 10, shipCX - 22, shipCX - 10 },
+                    new int[] { shipY + 22, shipY + 36, shipY + 36 }, 3);
+            g2.fillPolygon(new int[] { shipCX + 10, shipCX + 22, shipCX + 10 },
+                    new int[] { shipY + 22, shipY + 36, shipY + 36 }, 3);
+            g2.setColor(new Color(200, 180, 255));
+            g2.fillOval(shipCX - 5, shipY + 8, 10, 10);
+            // Animated charge glow on selected
+            if (selected) {
+                float p = (float) (0.5 + 0.5 * Math.sin(frameCount * 0.1));
+                g2.setColor(new Color(130, 80, 255, (int) (55 * p)));
+                g2.fillOval(shipCX - 18, shipY - 5, 36, 50);
+            }
+        }
 
-        // Class name
-        g2.setFont(new Font("Arial", Font.BOLD, 26));
-        g2.setColor(Color.WHITE);
-        g2.drawString("MACHINE GUNNER", r.x + 88, r.y + 46);
+        // Title
+        String[] titleLines = titleRaw.split("\\\\n");
+        g2.setFont(new Font("Arial", Font.BOLD, 18));
+        g2.setColor(selected ? Color.WHITE : new Color(180, 180, 230));
+        int ty = r.y + 74;
+        for (String line : titleLines) {
+            FontMetrics fm = g2.getFontMetrics();
+            g2.drawString(line, r.x + r.width / 2 - fm.stringWidth(line) / 2, ty);
+            ty += 22;
+        }
 
-        // Subtitle / flavour
-        g2.setFont(new Font("Arial", Font.ITALIC, 12));
-        g2.setColor(new Color(160, 200, 255));
-        g2.drawString("Spray and pray — overheat at your own risk", r.x + 88, r.y + 66);
+        // Description
+        String[] descLines = descRaw.split("\\\\n");
+        g2.setFont(new Font("Arial", Font.ITALIC, 11));
+        g2.setColor(selected ? new Color(180, 210, 255) : new Color(100, 100, 160));
+        int dy = ty + 4;
+        for (String line : descLines) {
+            FontMetrics fm = g2.getFontMetrics();
+            g2.drawString(line, r.x + r.width / 2 - fm.stringWidth(line) / 2, dy);
+            dy += 16;
+        }
 
         // Divider inside card
-        g2.setColor(new Color(0, 160, 255, 50));
-        g2.fillRect(r.x + 14, r.y + 78, r.width - 28, 1);
+        g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 50));
+        g2.fillRect(r.x + 14, dy + 4, r.width - 28, 1);
 
         // Stats
-        int sy2 = r.y + 100;
-        drawStatRow(g2, r.x + 20, sy2, "FIRE RATE", 5, 5, new Color(0, 220, 255));
-        drawStatRow(g2, r.x + 20, sy2 + 34, "HEAT BUILD", 4, 5, new Color(255, 140, 0));
-        drawStatRow(g2, r.x + 20, sy2 + 68, "SPEED", 3, 5, new Color(80, 255, 80));
-        drawStatRow(g2, r.x + 20, sy2 + 102, "DEFENSE", 2, 5, new Color(180, 100, 255));
-
-        // "More coming soon" placeholder
-        g2.setColor(new Color(30, 30, 70));
-        g2.fillRoundRect(r.x, r.y + r.height + 20, r.width, 60, 14, 14);
-        g2.setColor(new Color(50, 50, 100));
-        g2.setStroke(new BasicStroke(1.2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND,
-                0, new float[] { 6, 6 }, 0));
-        g2.drawRoundRect(r.x, r.y + r.height + 20, r.width, 60, 14, 14);
-        g2.setStroke(new BasicStroke(1));
-        g2.setFont(new Font("Arial", Font.ITALIC, 13));
-        g2.setColor(new Color(80, 80, 130));
-        String coming = "More classes coming soon...";
-        g2.drawString(coming, WIDTH / 2 - g2.getFontMetrics().stringWidth(coming) / 2, r.y + r.height + 57);
-
-        drawBtn(g2, btnClassBack, "BACK", true);
-
-        // "Press Enter or click card" hint
-        g2.setFont(new Font("Arial", Font.PLAIN, 11));
-        g2.setColor(new Color(90, 90, 150));
-        String hint = "Click the card or press ENTER to begin";
-        g2.drawString(hint, WIDTH / 2 - g2.getFontMetrics().stringWidth(hint) / 2, 632);
+        String[] sLabels = { "FIRE RATE", "HEAT BUILD", "SPEED", "DEFENSE" };
+        Color[] sCols = { new Color(0, 220, 255), new Color(255, 140, 0), new Color(80, 255, 80),
+                new Color(180, 100, 255) };
+        int sRowY = dy + 16;
+        for (int i = 0; i < 4; i++) {
+            drawStatRow(g2, r.x + 14, sRowY, sLabels[i], stats[i], 5, sCols[i]);
+            sRowY += 26;
+        }
     }
 
-    /** Draws a labelled pip-bar stat row inside the class card. */
     private void drawStatRow(Graphics2D g2, int x, int y, String label, int value, int max, Color pipColor) {
-        g2.setFont(new Font("Arial", Font.BOLD, 11));
+        g2.setFont(new Font("Arial", Font.BOLD, 10));
         g2.setColor(new Color(120, 160, 220));
-        g2.drawString(label, x, y + 13);
-        int pipW = 22, pipH = 12, gap = 5, startX = x + 110;
+        g2.drawString(label, x, y + 11);
+        int pipW = 16, pipH = 10, gap = 4, startX = x + 95;
         for (int i = 0; i < max; i++) {
-            boolean filled = i < value;
-            g2.setColor(filled ? pipColor : new Color(20, 20, 50));
+            boolean f = i < value;
+            g2.setColor(f ? pipColor : new Color(20, 20, 50));
             g2.fillRoundRect(startX + i * (pipW + gap), y, pipW, pipH, 4, 4);
-            if (filled) {
-                g2.setColor(new Color(255, 255, 255, 60));
+            if (f) {
+                g2.setColor(new Color(255, 255, 255, 55));
                 g2.fillRoundRect(startX + i * (pipW + gap), y, pipW, pipH / 2, 4, 4);
             }
-            g2.setColor(filled ? pipColor.darker() : new Color(35, 35, 70));
+            g2.setColor(f ? pipColor.darker() : new Color(35, 35, 70));
             g2.setStroke(new BasicStroke(0.8f));
             g2.drawRoundRect(startX + i * (pipW + gap), y, pipW, pipH, 4, 4);
             g2.setStroke(new BasicStroke(1));
         }
     }
 
-    // ── In-game HUD (unchanged except shake is handled in paintComponent) ──
+    // ── In-game ───────────────────────────────────────────────────────
     private void drawGame(Graphics2D g2) {
         if (boss.alive)
             boss.draw(g2);
@@ -905,24 +1037,114 @@ public class BulletHellGame extends JPanel
             b.draw(g2);
         for (Bullet b : enemyBullets)
             b.draw(g2);
+
+        // ── Nova FX ──────────────────────────────────────────────────
+        if (selectedClass == CLASS_NOVA) {
+            // Charge ring & bar
+            if (novaCharging && novaChargeTimer > 0) {
+                float cf = (float) novaChargeTimer / NOVA_CHARGE_FRAMES;
+                int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
+                int ringR = (int) (14 + 28 * cf);
+                g2.setColor(new Color((int) (80 + 175 * cf), (int) (80 + 160 * cf), 255, (int) (60 + 100 * cf)));
+                g2.setStroke(new BasicStroke(2.5f));
+                g2.drawOval(pcx - ringR, pcy - ringR, ringR * 2, ringR * 2);
+                g2.setStroke(new BasicStroke(1));
+                g2.setColor(new Color(100, 130, 255, (int) (20 * cf * (0.5 + 0.5 * Math.sin(frameCount * 0.3)))));
+                g2.fillOval(pcx - ringR, pcy - ringR, ringR * 2, ringR * 2);
+                // Mini charge bar above ship
+                int barW = 60, barH = 6, barX = pcx - barW / 2, barY = player.y - 16;
+                g2.setColor(new Color(10, 10, 40));
+                g2.fillRoundRect(barX, barY, barW, barH, 4, 4);
+                g2.setColor(new Color((int) (80 + 120 * cf), (int) (80 + 130 * cf), 255));
+                g2.fillRoundRect(barX, barY, (int) (barW * cf), barH, 4, 4);
+                g2.setColor(new Color(100, 100, 200));
+                g2.setStroke(new BasicStroke(1f));
+                g2.drawRoundRect(barX, barY, barW, barH, 4, 4);
+                g2.setStroke(new BasicStroke(1));
+                g2.setFont(new Font("Arial", Font.BOLD, 10));
+                g2.setColor(new Color(160, 180, 255));
+                String ct = cf >= 0.99f ? "RELEASE!" : "CHARGING";
+                g2.drawString(ct, barX + barW / 2 - g2.getFontMetrics().stringWidth(ct) / 2, barY - 3);
+            }
+
+            // Particles
+            for (NovaParticle np : novaParticles)
+                np.draw(g2);
+
+            // Laser beam (layered glow)
+            if (novaLaserActive) {
+                float t = (float) novaLaserTimer / NOVA_LASER_FRAMES;
+                // 4 passes: wide glow → tight core
+                float[] widths = { NOVA_LASER_WIDTH * 3f, NOVA_LASER_WIDTH * 2f, NOVA_LASER_WIDTH,
+                        NOVA_LASER_WIDTH * 0.4f };
+                Color[] cols = {
+                        new Color(60, 100, 255, (int) (18 * t)),
+                        new Color(100, 160, 255, (int) (50 * t)),
+                        new Color(160, 210, 255, (int) (120 * t)),
+                        new Color(240, 250, 255, (int) (240 * t))
+                };
+                for (int gi = 0; gi < 4; gi++) {
+                    g2.setColor(cols[gi]);
+                    g2.setStroke(new BasicStroke(widths[gi], BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawLine(novaBeamX1, novaBeamY1, novaBeamX2, novaBeamY2);
+                }
+                g2.setStroke(new BasicStroke(1));
+                // Origin sparks
+                rand.setSeed(frameCount * 7L);
+                for (int sp = 0; sp < 8; sp++) {
+                    double ang = rand.nextDouble() * Math.PI * 2;
+                    int sx = (int) (novaBeamX1 + Math.cos(ang) * (4 + rand.nextInt(8)));
+                    int sy = (int) (novaBeamY1 + Math.sin(ang) * (4 + rand.nextInt(8)));
+                    g2.setColor(new Color(200, 230, 255, (int) (180 * t)));
+                    g2.fillOval(sx - 2, sy - 2, 4, 4);
+                }
+            }
+
+            // Cooldown bar
+            if (novaCooldownTimer > 0 && !novaCharging && !novaLaserActive) {
+                float cdf = (float) novaCooldownTimer / NOVA_COOLDOWN_FRAMES;
+                int pcx = player.x + player.size / 2;
+                int barW = 50, barH = 5, barX = pcx - barW / 2, barY = player.y - 14;
+                g2.setColor(new Color(10, 10, 40));
+                g2.fillRoundRect(barX, barY, barW, barH, 4, 4);
+                g2.setColor(new Color(200, 100, 60));
+                g2.fillRoundRect(barX, barY, (int) (barW * cdf), barH, 4, 4);
+                g2.setColor(new Color(120, 80, 60));
+                g2.setStroke(new BasicStroke(1f));
+                g2.drawRoundRect(barX, barY, barW, barH, 4, 4);
+                g2.setStroke(new BasicStroke(1));
+                g2.setFont(new Font("Arial", Font.BOLD, 9));
+                g2.setColor(new Color(200, 120, 80));
+                String cd = "COOLDOWN";
+                g2.drawString(cd, barX + barW / 2 - g2.getFontMetrics().stringWidth(cd) / 2, barY - 2);
+            }
+        }
+
         if (player.alive)
             player.draw(g2);
 
-        if (player.alive && !overheated) {
-            int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
-            g2.setColor(new Color(0, 200, 255, 35));
-            g2.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[] { 6f, 8f },
-                    frameCount * 0.5f));
-            g2.drawLine(pcx, pcy, mouseX, mouseY);
-            g2.setStroke(new BasicStroke(1));
-            g2.setColor(new Color(0, 220, 255, 120));
-            g2.drawOval(mouseX - 8, mouseY - 8, 16, 16);
-            g2.drawLine(mouseX - 12, mouseY, mouseX - 4, mouseY);
-            g2.drawLine(mouseX + 4, mouseY, mouseX + 12, mouseY);
-            g2.drawLine(mouseX, mouseY - 12, mouseX, mouseY - 4);
-            g2.drawLine(mouseX, mouseY + 4, mouseX, mouseY + 12);
+        // Aim line / crosshair
+        if (player.alive) {
+            boolean canShow = selectedClass == CLASS_MACHINE_GUNNER ? !overheated
+                    : (!novaLaserActive && novaCooldownTimer == 0);
+            if (canShow) {
+                int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
+                g2.setColor(new Color(0, 200, 255, 30));
+                g2.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f,
+                        new float[] { 6f, 8f }, frameCount * 0.5f));
+                g2.drawLine(pcx, pcy, mouseX, mouseY);
+                g2.setStroke(new BasicStroke(1));
+                Color xc = selectedClass == CLASS_NOVA ? new Color(160, 100, 255, 140) : new Color(0, 220, 255, 120);
+                g2.setColor(xc);
+                g2.drawOval(mouseX - 8, mouseY - 8, 16, 16);
+                g2.drawLine(mouseX - 12, mouseY, mouseX - 4, mouseY);
+                g2.drawLine(mouseX + 4, mouseY, mouseX + 12, mouseY);
+                g2.drawLine(mouseX, mouseY - 12, mouseX, mouseY - 4);
+                g2.drawLine(mouseX, mouseY + 4, mouseX, mouseY + 12);
+            }
         }
 
+        // Shield
         if (hasShield) {
             int r = player.size / 2 + 14, cx = player.x + player.size / 2, cy = player.y + player.size / 2;
             g2.setColor(new Color(100, 180, 255, 55));
@@ -933,31 +1155,31 @@ public class BulletHellGame extends JPanel
             g2.setStroke(new BasicStroke(1));
         }
 
+        // HUD
         g2.setFont(new Font("Arial", Font.BOLD, 16));
         g2.setColor(Color.WHITE);
         g2.drawString("SCORE: " + score, 10, 24);
         g2.drawString("WAVE: " + wave, WIDTH - 100, 24);
-        String[] dnames = { "EASY", "NORMAL", "HARD" };
+        String[] dn = { "EASY", "NORMAL", "HARD" };
         g2.setFont(new Font("Arial", Font.PLAIN, 11));
         g2.setColor(new Color(120, 120, 180));
-        g2.drawString(dnames[difficulty], WIDTH / 2 - 20, 24);
-
+        g2.drawString(dn[difficulty], WIDTH / 2 - 20, 24);
         for (int i = 0; i < player.lives; i++)
             drawMiniShip(g2, 10 + i * 22, HEIGHT - 32);
         drawActivePowerupIcons(g2);
-        drawHeatBar(g2);
+        if (selectedClass == CLASS_MACHINE_GUNNER)
+            drawHeatBar(g2);
 
         if (pickupTimer > 0) {
             float alpha = Math.min(1f, pickupTimer / 30f);
             g2.setFont(new Font("Arial", Font.BOLD, 22));
             FontMetrics fm = g2.getFontMetrics();
             int msgX = WIDTH / 2 - fm.stringWidth(pickupMsg) / 2;
-            Color msgColor = overheated && pickupMsg.equals("OVERHEATED!")
-                    ? new Color(255, 80, 40, (int) (alpha * 230))
+            Color mc = overheated && pickupMsg.equals("OVERHEATED!") ? new Color(255, 80, 40, (int) (alpha * 230))
                     : new Color(255, 230, 80, (int) (alpha * 230));
             g2.setColor(new Color(0, 0, 0, (int) (alpha * 130)));
             g2.fillRoundRect(msgX - 10, HEIGHT / 2 - 50, fm.stringWidth(pickupMsg) + 20, 34, 10, 10);
-            g2.setColor(msgColor);
+            g2.setColor(mc);
             g2.drawString(pickupMsg, msgX, HEIGHT / 2 - 26);
         }
 
@@ -990,37 +1212,37 @@ public class BulletHellGame extends JPanel
     }
 
     private void drawHeatBar(Graphics2D g2) {
-        int barW = 160, barH = 14, barX = WIDTH / 2 - barW / 2, barY = HEIGHT - 52;
+        int bW = 160, bH = 14, bX = WIDTH / 2 - bW / 2, bY = HEIGHT - 52;
         g2.setColor(new Color(10, 10, 30));
-        g2.fillRoundRect(barX, barY, barW, barH, 7, 7);
-        float heatFrac = (float) heat / MAX_HEAT;
-        Color barColor;
+        g2.fillRoundRect(bX, bY, bW, bH, 7, 7);
+        float hf = (float) heat / MAX_HEAT;
+        Color bc;
         if (overheated) {
-            int flash = (int) (Math.abs(Math.sin(frameCount * 0.18)) * 200) + 55;
-            barColor = new Color(flash, 0, 0);
-        } else if (heatFrac < 0.5f) {
-            barColor = new Color((int) (heatFrac * 2 * 255), 220, 0);
+            int fl = (int) (Math.abs(Math.sin(frameCount * 0.18)) * 200) + 55;
+            bc = new Color(fl, 0, 0);
+        } else if (hf < 0.5f) {
+            bc = new Color((int) (hf * 2 * 255), 220, 0);
         } else {
-            barColor = new Color(255, (int) ((1f - (heatFrac - 0.5f) * 2) * 180), 0);
+            bc = new Color(255, (int) ((1f - (hf - 0.5f) * 2) * 180), 0);
         }
-        int fillW = (int) (barW * heatFrac);
-        if (fillW > 0) {
-            g2.setColor(barColor);
-            g2.fillRoundRect(barX, barY, fillW, barH, 7, 7);
+        int fw = (int) (bW * hf);
+        if (fw > 0) {
+            g2.setColor(bc);
+            g2.fillRoundRect(bX, bY, fw, bH, 7, 7);
         }
         g2.setStroke(new BasicStroke(overheated ? 2f : 1.2f));
         g2.setColor(overheated ? new Color(255, 80, 0) : new Color(80, 80, 140));
-        g2.drawRoundRect(barX, barY, barW, barH, 7, 7);
+        g2.drawRoundRect(bX, bY, bW, bH, 7, 7);
         g2.setStroke(new BasicStroke(1));
         g2.setFont(new Font("Arial", Font.BOLD, 10));
         g2.setColor(overheated ? new Color(255, 100, 0) : new Color(160, 160, 220));
-        String label = overheated ? "COOLING DOWN..." : "HEAT";
-        g2.drawString(label, barX + barW / 2 - g2.getFontMetrics().stringWidth(label) / 2, barY - 2);
+        String lbl = overheated ? "COOLING DOWN..." : "HEAT";
+        g2.drawString(lbl, bX + bW / 2 - g2.getFontMetrics().stringWidth(lbl) / 2, bY - 2);
         if (overheated) {
-            float recoverFrac = 1f - (float) overheatTimer / OVERHEAT_FRAMES;
-            int recW = (int) (barW * recoverFrac);
+            float rf = 1f - (float) overheatTimer / OVERHEAT_FRAMES;
+            int rw = (int) (bW * rf);
             g2.setColor(new Color(0, 160, 255, 120));
-            g2.fillRoundRect(barX, barY + barH + 2, recW, 4, 3, 3);
+            g2.fillRoundRect(bX, bY + bH + 2, rw, 4, 3, 3);
         }
     }
 
@@ -1080,7 +1302,6 @@ public class BulletHellGame extends JPanel
         g2.drawString("[ M ]  Main Menu", WIDTH / 2 - 67, HEIGHT / 2 + 124);
     }
 
-    // ── Shared helpers (unchanged) ────────────────────────────────────
     private void drawBtn(Graphics2D g2, Rectangle r, String label, boolean active) {
         if (active) {
             g2.setColor(new Color(0, 150, 255, 25));
@@ -1120,9 +1341,9 @@ public class BulletHellGame extends JPanel
         g2.fillPolygon(new int[] { x + 7, x, x + 14 }, new int[] { y, y + 14, y + 14 }, 3);
     }
 
-    // ═════════════════════════════════════════════════════════════════
+    // =================================================================
     // GAME MANAGEMENT
-    // ═════════════════════════════════════════════════════════════════
+    // =================================================================
     private void startGame() {
         score = 0;
         wave = 1;
@@ -1131,6 +1352,12 @@ public class BulletHellGame extends JPanel
         heat = 0;
         overheated = false;
         overheatTimer = 0;
+        novaCharging = false;
+        novaChargeTimer = 0;
+        novaLaserActive = false;
+        novaLaserTimer = 0;
+        novaCooldownTimer = 0;
+        novaParticles.clear();
         hasShield = false;
         shieldTimer = 0;
         doubleShot = false;
@@ -1153,9 +1380,9 @@ public class BulletHellGame extends JPanel
         gameState = STATE_PLAYING;
     }
 
-    // ═════════════════════════════════════════════════════════════════
+    // =================================================================
     // INPUT
-    // ═════════════════════════════════════════════════════════════════
+    // =================================================================
     @Override
     public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() < 256)
@@ -1168,7 +1395,6 @@ public class BulletHellGame extends JPanel
         }
         if (gameState == STATE_PLAYING && e.getKeyCode() == KeyEvent.VK_ESCAPE)
             gameState = STATE_MENU;
-        // NEW: Enter on class select starts game
         if (gameState == STATE_CLASS_SEL && e.getKeyCode() == KeyEvent.VK_ENTER)
             startGame();
     }
@@ -1212,8 +1438,7 @@ public class BulletHellGame extends JPanel
             if (btnDiffEasy.contains(p)) {
                 difficulty = 0;
                 gameState = STATE_CLASS_SEL;
-            } // → class select
-            else if (btnDiffNormal.contains(p)) {
+            } else if (btnDiffNormal.contains(p)) {
                 difficulty = 1;
                 gameState = STATE_CLASS_SEL;
             } else if (btnDiffHard.contains(p)) {
@@ -1221,10 +1446,18 @@ public class BulletHellGame extends JPanel
                 gameState = STATE_CLASS_SEL;
             } else if (btnDiffBack.contains(p))
                 gameState = STATE_MENU;
-        } else if (gameState == STATE_CLASS_SEL) { // NEW
-            if (btnClassMachineGunner.contains(p))
-                startGame(); // only one class → go directly
-            else if (btnClassBack.contains(p))
+        } else if (gameState == STATE_CLASS_SEL) {
+            if (btnClassMachineGunner.contains(p)) {
+                if (selectedClass == CLASS_MACHINE_GUNNER)
+                    startGame();
+                else
+                    selectedClass = CLASS_MACHINE_GUNNER;
+            } else if (btnClassNova.contains(p)) {
+                if (selectedClass == CLASS_NOVA)
+                    startGame();
+                else
+                    selectedClass = CLASS_NOVA;
+            } else if (btnClassBack.contains(p))
                 gameState = STATE_DIFF_SEL;
         }
     }
@@ -1272,9 +1505,9 @@ public class BulletHellGame extends JPanel
         mouseY = e.getY();
     }
 
-    // ═════════════════════════════════════════════════════════════════
-    // POWERUP HELPERS (unchanged)
-    // ═════════════════════════════════════════════════════════════════
+    // =================================================================
+    // POWERUP HELPERS
+    // =================================================================
     static Color puColor(int type) {
         switch (type) {
             case PU_SPEED:
@@ -1326,9 +1559,9 @@ public class BulletHellGame extends JPanel
         }
     }
 
-    // ═════════════════════════════════════════════════════════════════
-    // INNER CLASSES (unchanged)
-    // ═════════════════════════════════════════════════════════════════
+    // =================================================================
+    // INNER CLASSES
+    // =================================================================
     class Player {
         int x, y, size = 30, speed = 5, lives = 3;
         boolean alive = true;
@@ -1343,16 +1576,35 @@ public class BulletHellGame extends JPanel
         }
 
         void draw(Graphics2D g2) {
-            int glowAlpha = firingThisFrame ? (int) (120 + 80 * Math.abs(Math.sin(frameCount * 0.5))) : 120;
-            g2.setColor(new Color(0, 120, 255, glowAlpha));
-            g2.fillOval(x + size / 2 - 6, y + size - 4, 12, 10);
-            g2.setColor(Color.CYAN);
-            g2.fillPolygon(new int[] { x + size / 2, x, x + size }, new int[] { y, y + size, y + size }, 3);
-            g2.setColor(new Color(200, 255, 255));
-            g2.fillOval(x + size / 2 - 4, y + 7, 8, 8);
-            if (overheated) {
-                g2.setColor(new Color(255, 80, 0, (int) (80 * Math.abs(Math.sin(frameCount * 0.18)))));
-                g2.fillOval(x, y, size, size);
+            if (selectedClass == CLASS_NOVA) {
+                int glowA = novaCharging ? (int) (80 + 120 * Math.abs(Math.sin(frameCount * 0.2))) : 120;
+                g2.setColor(new Color(80, 40, 180, glowA));
+                g2.fillOval(x + size / 2 - 6, y + size - 4, 12, 10);
+                g2.setColor(new Color(160, 100, 255));
+                g2.fillPolygon(new int[] { x + size / 2, x + 4, x + size - 4 }, new int[] { y, y + size, y + size }, 3);
+                g2.setColor(new Color(100, 60, 200));
+                g2.fillPolygon(new int[] { x + 4, x, x + 4 }, new int[] { y + size * 2 / 3, y + size, y + size }, 3);
+                g2.fillPolygon(new int[] { x + size - 4, x + size, x + size - 4 },
+                        new int[] { y + size * 2 / 3, y + size, y + size }, 3);
+                g2.setColor(new Color(220, 200, 255));
+                g2.fillOval(x + size / 2 - 4, y + 7, 8, 8);
+                if (novaCharging) {
+                    float cf = (float) novaChargeTimer / NOVA_CHARGE_FRAMES;
+                    g2.setColor(new Color(130, 80, 255, (int) (50 * cf)));
+                    g2.fillOval(x - 4, y - 4, size + 8, size + 8);
+                }
+            } else {
+                int glowA = firingThisFrame ? (int) (120 + 80 * Math.abs(Math.sin(frameCount * 0.5))) : 120;
+                g2.setColor(new Color(0, 120, 255, glowA));
+                g2.fillOval(x + size / 2 - 6, y + size - 4, 12, 10);
+                g2.setColor(Color.CYAN);
+                g2.fillPolygon(new int[] { x + size / 2, x, x + size }, new int[] { y, y + size, y + size }, 3);
+                g2.setColor(new Color(200, 255, 255));
+                g2.fillOval(x + size / 2 - 4, y + 7, 8, 8);
+                if (overheated) {
+                    g2.setColor(new Color(255, 80, 0, (int) (80 * Math.abs(Math.sin(frameCount * 0.18)))));
+                    g2.fillOval(x, y, size, size);
+                }
             }
         }
     }
@@ -1473,9 +1725,41 @@ public class BulletHellGame extends JPanel
         }
     }
 
-    // ═════════════════════════════════════════════════════════════════
+    /** Charge / burst particle for Nova class. */
+    class NovaParticle {
+        double x, y, vx, vy;
+        Color color;
+        int life, maxLife;
+
+        NovaParticle(double x, double y, double vx, double vy, Color c, int life) {
+            this.x = x;
+            this.y = y;
+            this.vx = vx;
+            this.vy = vy;
+            color = c;
+            this.life = maxLife = life;
+        }
+
+        boolean update() {
+            x += vx;
+            y += vy;
+            vx *= 0.88;
+            vy *= 0.88;
+            return --life > 0;
+        }
+
+        void draw(Graphics2D g2) {
+            float frac = (float) life / maxLife;
+            int alpha = (int) (200 * frac);
+            int sz = Math.max(1, (int) (4 * frac));
+            g2.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
+            g2.fillOval((int) x - sz / 2, (int) y - sz / 2, sz, sz);
+        }
+    }
+
+    // =================================================================
     // MAIN
-    // ═════════════════════════════════════════════════════════════════
+    // =================================================================
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Bullet Hell");
