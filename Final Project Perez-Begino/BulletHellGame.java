@@ -24,7 +24,6 @@ public class BulletHellGame extends JPanel
     static final int FIRE_MOUSE = 0;
     static final int FIRE_SPACE = 1;
 
-    // Only 3 power-ups remain: speed removed, triple shot removed, bomb removed
     static final int PU_DOUBLE_SHOT = 0;
     static final int PU_SHIELD = 1;
     static final int PU_COUNT = 2;
@@ -80,7 +79,7 @@ public class BulletHellGame extends JPanel
     private int novaBeamX1, novaBeamY1, novaBeamX2, novaBeamY2;
     private final ArrayList<NovaParticle> novaParticles = new ArrayList<>();
 
-    // PowerUp timers (only double shot and shield remain)
+    // PowerUp timers
     private boolean hasShield = false;
     private int shieldTimer = 0;
     private boolean doubleShot = false;
@@ -382,7 +381,6 @@ public class BulletHellGame extends JPanel
         if (pickupTimer > 0)
             pickupTimer--;
 
-        // Spawn only double shot and shield powerups
         if (frameCount % 360 == 0 && !bossTransition) {
             int type = (frameCount / 360) % PU_COUNT;
             boolean already = (type == PU_DOUBLE_SHOT && doubleShot) || (type == PU_SHIELD && hasShield);
@@ -412,7 +410,7 @@ public class BulletHellGame extends JPanel
         // Nova laser vs boss
         if (selectedClass == CLASS_NOVA && novaLaserActive && !bossTransition && boss.alive) {
             if (laserHitsBoss(boss.getBounds())) {
-                boss.hp -= 100;
+                boss.hp -= 1;
                 score += 6;
                 if (boss.hp <= 0)
                     bossDefeated();
@@ -472,8 +470,8 @@ public class BulletHellGame extends JPanel
             }
         }
 
-        // Boss laser vs player
-        if (!bossTransition && boss.alive && boss.laserActive) {
+        // Boss laser vs player (APEX ONLY)
+        if (!bossTransition && boss.alive && boss.laserActive && boss.isApex) {
             if (player.alive && boss.laserHitsPlayer(player.getHitbox())) {
                 if (hasShield) {
                     hasShield = false;
@@ -641,64 +639,107 @@ public class BulletHellGame extends JPanel
     }
 
     // ── Boss patterns ─────────────────────────────────────────────────
+    // Wave scaling helpers:
+    // Waves 1-5 = EASY bracket (low speed, low count, long intervals)
+    // Waves 6-10 = MEDIUM bracket (moderate speed, moderate count)
+    // Wave 11+ = HARD bracket (original feel)
     private void spawnBossPattern() {
         if (!boss.alive)
             return;
         int cx = boss.x + boss.width / 2, cy = boss.y + boss.height / 2;
         double dm = new double[] { 0.65, 0.9, 1.25 }[difficulty];
 
-        // Wave 1+: ring burst (nerfed for apex: only for non-apex OR reduced rate)
-        if (frameCount % (boss.isApex ? 110 : 80) == 0) {
-            int cnt = boss.isApex ? Math.min(8 + wave, 14) : Math.min(8 + wave * 2, 20);
+        // Determine bracket multipliers
+        double speedScale, countScale;
+        int ringInterval, aimedInterval, spiralInterval;
+        if (wave <= 5) {
+            // EASY – gentle intro
+            speedScale = 0.55;
+            countScale = 0.45;
+            ringInterval = 130;
+            aimedInterval = 90;
+            spiralInterval = 22;
+        } else if (wave <= 10) {
+            // MEDIUM – picking up
+            speedScale = 0.75;
+            countScale = 0.70;
+            ringInterval = 100;
+            aimedInterval = 55;
+            spiralInterval = 14;
+        } else {
+            // HARD – original feel
+            speedScale = 1.0;
+            countScale = 1.0;
+            ringInterval = 80;
+            aimedInterval = 35;
+            spiralInterval = 8;
+        }
+
+        // ── Pattern 1: Ring burst (wave 1+) ──────────────────────────
+        if (!boss.isApex && frameCount % ringInterval == 0) {
+            int cnt = (int) Math.max(4, Math.min(8 + wave * 2, 20) * countScale);
             for (int i = 0; i < cnt; i++) {
                 double a = 2 * Math.PI * i / cnt + Math.toRadians(frameCount * 2);
-                double s = (boss.isApex ? 1.8 : 2.2 + wave * 0.2) * dm;
+                double s = (2.2 + wave * 0.15) * dm * speedScale;
                 enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * s, Math.sin(a) * s, Color.RED, true));
             }
         }
 
-        // Wave 2+: aimed shot
-        if (wave >= 2 && frameCount % (boss.isApex ? 50 : 35) == 0) {
+        // ── Pattern 2: Aimed shot (wave 2+) ──────────────────────────
+        if (!boss.isApex && wave >= 2 && frameCount % aimedInterval == 0) {
             double dx = player.x - cx, dy2 = player.y - cy, len = Math.sqrt(dx * dx + dy2 * dy2);
             if (len > 0) {
-                double s = (boss.isApex ? 2.8 : 3.5) * dm;
+                double s = 3.0 * dm * speedScale;
                 enemyBullets.add(new Bullet(cx, cy, dx / len * s, dy2 / len * s, Color.ORANGE, true));
             }
         }
 
-        // Wave 3+: rotating spiral (apex: slower interval)
-        if (wave >= 3 && frameCount % (boss.isApex ? 14 : 8) == 0) {
-            double a = Math.toRadians(frameCount * 5), s = (boss.isApex ? 2.2 : 2.8) * dm;
+        // ── Pattern 3: Rotating spiral (wave 3+) ─────────────────────
+        if (!boss.isApex && wave >= 3 && frameCount % spiralInterval == 0) {
+            double a = Math.toRadians(frameCount * 5), s = 2.5 * dm * speedScale;
             enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * s, Math.sin(a) * s, Color.MAGENTA, true));
             enemyBullets.add(new Bullet(cx, cy, -Math.cos(a) * s, -Math.sin(a) * s, Color.MAGENTA, true));
         }
 
-        // Wave 4+: 4-way cross (apex: skip, lasers handle the pressure)
-        if (wave >= 4 && !boss.isApex && frameCount % 20 == 0) {
+        // ── Pattern 4: 4-way cross (wave 4+, only medium+) ───────────
+        if (!boss.isApex && wave >= 4 && wave > 5 && frameCount % 20 == 0) {
             for (int i = 0; i < 4; i++) {
                 double a = Math.PI / 2 * i + Math.toRadians(frameCount * 2);
-                enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * 3.2 * dm, Math.sin(a) * 3.2 * dm,
+                double s = 3.0 * dm * speedScale;
+                enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * s, Math.sin(a) * s,
                         new Color(255, 80, 0), true));
             }
         }
 
-        // Wave 5+: flower burst (non-apex only)
-        if (wave >= 5 && !boss.isApex && frameCount % 55 == 0) {
+        // ── Pattern 5: Flower burst (wave 5+, only medium+) ──────────
+        if (!boss.isApex && wave >= 5 && wave > 5 && frameCount % 55 == 0) {
             for (int i = 0; i < 14; i++) {
                 double a = 2 * Math.PI * i / 14 + Math.toRadians(frameCount);
-                enemyBullets
-                        .add(new Bullet(cx, cy, Math.cos(a) * 3.8 * dm, Math.sin(a) * 3.8 * dm, Color.YELLOW, true));
+                double s = 3.5 * dm * speedScale;
+                enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * s, Math.sin(a) * s, Color.YELLOW, true));
             }
         }
 
-        // APEX BOSS: light bullet supplemental (lasers are the main threat)
+        // ── APEX BOSS: Empress of Light style ────────────────────────
+        // Lasers are the PRIMARY threat; bullets are light supplemental.
         if (boss.isApex) {
-            // Single aimed shot every 45 frames as supplemental
-            if (frameCount % 45 == 0) {
+            // Very sparse ring – only to keep player moving between laser attacks
+            if (frameCount % 140 == 0) {
+                int cnt = (int) Math.max(5, Math.min(8 + wave, 12) * countScale);
+                for (int i = 0; i < cnt; i++) {
+                    double a = 2 * Math.PI * i / cnt + Math.toRadians(frameCount * 3);
+                    double s = 1.6 * dm * speedScale;
+                    enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * s, Math.sin(a) * s,
+                            new Color(255, 100, 200), true));
+                }
+            }
+            // Single aimed shot as supplemental pressure
+            if (frameCount % 55 == 0) {
                 double dx = player.x - cx, dy2 = player.y - cy, len = Math.sqrt(dx * dx + dy2 * dy2);
                 if (len > 0) {
-                    double s = 2.5 * dm;
-                    enemyBullets.add(new Bullet(cx, cy, dx / len * s, dy2 / len * s, new Color(255, 60, 180), true));
+                    double s = 2.2 * dm * speedScale;
+                    enemyBullets.add(new Bullet(cx, cy, dx / len * s, dy2 / len * s,
+                            new Color(255, 60, 180), true));
                 }
             }
         }
@@ -810,7 +851,7 @@ public class BulletHellGame extends JPanel
         drawBtn(g2, btnQuit, "QUIT", true);
         g2.setFont(new Font("Arial", Font.PLAIN, 12));
         g2.setColor(new Color(80, 80, 120));
-        g2.drawString("v4.2", WIDTH - 40, HEIGHT - 10);
+        g2.drawString("v4.3", WIDTH - 40, HEIGHT - 10);
     }
 
     // ── Settings ──────────────────────────────────────────────────────
@@ -1052,7 +1093,8 @@ public class BulletHellGame extends JPanel
                 float t = (float) novaLaserTimer / NOVA_LASER_FRAMES;
                 float[] widths = { NOVA_LASER_WIDTH * 3f, NOVA_LASER_WIDTH * 2f, NOVA_LASER_WIDTH,
                         NOVA_LASER_WIDTH * 0.4f };
-                Color[] cols = { new Color(60, 100, 255, (int) (18 * t)), new Color(100, 160, 255, (int) (50 * t)),
+                Color[] cols = {
+                        new Color(60, 100, 255, (int) (18 * t)), new Color(100, 160, 255, (int) (50 * t)),
                         new Color(160, 210, 255, (int) (120 * t)), new Color(240, 250, 255, (int) (240 * t)) };
                 for (int gi = 0; gi < 4; gi++) {
                     g2.setColor(cols[gi]);
@@ -1090,7 +1132,6 @@ public class BulletHellGame extends JPanel
         if (player.alive)
             player.draw(g2);
 
-        // Aim line / crosshair
         if (player.alive) {
             boolean canShow = selectedClass == CLASS_MACHINE_GUNNER ? !overheated
                     : (!novaLaserActive && novaCooldownTimer == 0);
@@ -1111,7 +1152,6 @@ public class BulletHellGame extends JPanel
             }
         }
 
-        // Shield
         if (hasShield) {
             int r = player.size / 2 + 14, cx = player.x + player.size / 2, cy = player.y + player.size / 2;
             g2.setColor(new Color(100, 180, 255, 55));
@@ -1122,7 +1162,6 @@ public class BulletHellGame extends JPanel
             g2.setStroke(new BasicStroke(1));
         }
 
-        // HUD
         g2.setFont(new Font("Arial", Font.BOLD, 16));
         g2.setColor(Color.WHITE);
         g2.drawString("SCORE: " + score, 10, 24);
@@ -1571,7 +1610,9 @@ public class BulletHellGame extends JPanel
     }
 
     // =================================================================
-    // BOSS CLASS — Apex uses 4 distinct laser modes
+    // BOSS CLASS
+    // Laser is APEX ONLY.
+    // Apex beams always originate from boss and fire DOWNWARD toward player.
     // =================================================================
     class Boss {
         int x, y, width = 80, height = 50;
@@ -1591,39 +1632,35 @@ public class BulletHellGame extends JPanel
         double circleAngle = 0;
         int diveTargetX, diveTargetY;
         int zigDir = 1;
-
         float pulsePhase = 0;
         int waveNum;
 
-        // ── Laser state machine ────────────────────────────────────────
-        // For all bosses:
+        // ── Laser state machine (APEX ONLY) ───────────────────────────
+        // All angles stored as radians pointing from boss TOWARD player
+        // (positive-Y = downward in screen coords, so angles near PI/2 = straight down)
         static final int LASER_NONE = 0;
         static final int LASER_TELEGRAPH = 1;
-        static final int LASER_SWEEP = 2; // sweeping beam (non-apex + apex)
-        static final int LASER_TARGET = 3; // targeted snap (non-apex)
-
-        // Apex-exclusive beam types:
-        static final int LASER_TRACKING = 10; // continuously follows player
-        static final int LASER_CHANNELING = 11; // fires while charging, slow ramp
-        static final int LASER_PERSISTENT = 12; // stays active a long time, moderate tracking
+        static final int LASER_SWEEP = 2; // sweeping beam
+        static final int LASER_TRACKING = 3; // real-time tracking
+        static final int LASER_CHANNELING = 4; // growing-width beam
+        static final int LASER_PERSISTENT = 5; // long-duration slow-tracking
 
         int laserState = LASER_NONE;
         int laserTimer = 0;
         boolean laserActive = false;
 
-        // Sweep / tracking angle
-        double sweepAngle = Math.PI + 0.2, sweepDir = 1;
-        boolean isSweepLaser = false;
-
-        // Locked direction for targeted / persistent beams
-        double laserDirX, laserDirY;
-        int laserEndX, laserEndY;
+        // Current beam angle in radians; 0 = right, PI/2 = DOWN (toward player)
+        double beamAngle = Math.PI / 2;
+        // For sweep: direction of sweep
+        double sweepDir = 1;
+        // Channeling beam width
+        int channelingBeamWidth = 2;
 
         int laserCooldown = 0;
         int laserInterval;
 
-        // Channeling beam ramp
-        int channelingBeamWidth = 2; // grows over time
+        // Which apex type cycles next (0-3)
+        int apexLaserCycle = 0;
 
         Boss(int bx2, int by2, int wave) {
             this.bx = bx2;
@@ -1632,12 +1669,10 @@ public class BulletHellGame extends JPanel
             this.y = (int) by;
             this.waveNum = wave;
             this.isApex = (wave % 5 == 0);
-            // NERFED: apex is 1.5x HP instead of 2.5x
             maxHp = hp = isApex ? (10 + wave * 20) * 1.5 : (10 + wave * 20);
-            laserInterval = isApex
-                    ? Math.max(120, 260 - wave * 8)
-                    : Math.max(180, 360 - wave * 30);
-            laserCooldown = laserInterval / 2;
+            // Normal bosses: no laser needed, set interval very high
+            laserInterval = isApex ? Math.max(120, 260 - wave * 8) : 999999;
+            laserCooldown = isApex ? laserInterval / 2 : 999999;
         }
 
         Rectangle getBounds() {
@@ -1654,6 +1689,39 @@ public class BulletHellGame extends JPanel
             String[] names = { "VOID SCOUT", "REAPER MK-II", "CRIMSON TITAN", "OMEGA CORE", "HELL'S EYE" };
             int idx = Math.min(waveNum - 1, names.length - 1);
             return names[idx] + "  HP";
+        }
+
+        // Origin point of beam (bottom center of boss)
+        int originX() {
+            return (int) bx + width / 2;
+        }
+
+        int originY() {
+            return (int) by + height;
+        }
+
+        // Compute angle from boss to player, clamped to lower hemisphere
+        // (ensures beam always fires DOWNWARD toward player, never backward)
+        double angleToPlayer(Player player) {
+            int ox = originX(), oy = originY();
+            int px = player.x + player.size / 2, py = player.y + player.size / 2;
+            double dx = px - ox, dy = py - oy;
+            // If player is above boss (shouldn't normally happen), default to straight down
+            if (dy < 0)
+                dy = 10;
+            double angle = Math.atan2(dy, dx);
+            // Clamp to [PI*0.1, PI*0.9] range — keeps beam in lower half, never fires up
+            angle = Math.max(Math.PI * 0.05, Math.min(Math.PI * 0.95, angle));
+            return angle;
+        }
+
+        // Get endpoint of beam given origin + angle
+        int beamEndX() {
+            return originX() + (int) (Math.cos(beamAngle) * 1200);
+        }
+
+        int beamEndY() {
+            return originY() + (int) (Math.sin(beamAngle) * 1200);
         }
 
         void update(int frame, Player player) {
@@ -1697,7 +1765,8 @@ public class BulletHellGame extends JPanel
                     by = 160 + Math.sin(circleAngle) * 70;
                     break;
                 case PHASE_DIVE:
-                    double tdx = diveTargetX - bx, tdy = diveTargetY - by, tlen = Math.sqrt(tdx * tdx + tdy * tdy);
+                    double tdx = diveTargetX - bx, tdy = diveTargetY - by,
+                            tlen = Math.sqrt(tdx * tdx + tdy * tdy);
                     if (tlen > 3) {
                         bx += tdx / tlen * (3.5 + waveNum * 0.4) * speedMult;
                         by += tdy / tlen * (3.5 + waveNum * 0.4) * speedMult;
@@ -1730,27 +1799,30 @@ public class BulletHellGame extends JPanel
             x = (int) bx;
             y = (int) by;
 
-            // Laser scheduling
+            // Laser scheduling (APEX ONLY)
+            if (!isApex)
+                return;
+
             if (laserState == LASER_NONE) {
                 laserCooldown--;
-                if (laserCooldown <= 0 && waveNum >= 2) {
-                    laserCooldown = laserInterval + rand.nextInt(isApex ? 40 : 60);
-                    if (isApex) {
-                        // Cycle through 4 apex beam types
-                        int roll = rand.nextInt(4);
-                        if (roll == 0)
+                if (laserCooldown <= 0) {
+                    laserCooldown = laserInterval + rand.nextInt(40);
+                    // Cycle through 4 Empress-of-Light style beam types in order
+                    switch (apexLaserCycle % 4) {
+                        case 0:
+                            startSweepLaser(player);
+                            break;
+                        case 1:
                             startTrackingBeam(player);
-                        else if (roll == 1)
-                            startSweepLaser();
-                        else if (roll == 2)
+                            break;
+                        case 2:
                             startChannelingBeam(player);
-                        else
+                            break;
+                        case 3:
                             startPersistentBeam(player);
-                    } else if (waveNum >= 3 && rand.nextBoolean()) {
-                        startSweepLaser();
-                    } else {
-                        startTargetLaser(player);
+                            break;
                     }
+                    apexLaserCycle++;
                 }
             } else {
                 laserTimer--;
@@ -1758,182 +1830,122 @@ public class BulletHellGame extends JPanel
                 if (laserTimer <= 0) {
                     laserState = LASER_NONE;
                     laserActive = false;
-                    laserCooldown = laserInterval + rand.nextInt(isApex ? 40 : 60);
+                    laserCooldown = laserInterval + rand.nextInt(40);
                 }
             }
         }
 
-        // ── Laser starters ────────────────────────────────────────────
+        // ── Laser starters (APEX ONLY) ────────────────────────────────
 
-        void startSweepLaser() {
+        // Telegraph → sweep across player from left to right
+        void startSweepLaser(Player player) {
+            beamAngle = angleToPlayer(player);
+            // Start sweep 45 degrees to the left of player
+            beamAngle -= Math.PI * 0.25;
+            beamAngle = Math.max(Math.PI * 0.05, beamAngle);
+            sweepDir = 1; // sweep right
             laserState = LASER_TELEGRAPH;
-            laserTimer = 70;
-            sweepAngle = Math.PI + 0.2;
-            sweepDir = 1;
-            isSweepLaser = true;
+            laserTimer = 60;
             laserActive = false;
         }
 
-        void startTargetLaser(Player player) {
-            laserState = LASER_TELEGRAPH;
-            laserTimer = 65;
-            isSweepLaser = false;
-            laserActive = false;
-            lockDirection(player);
-        }
-
-        // APEX: Tracking Beam — fires immediately, continuously rotates to follow
-        // player
+        // Tracking: locks on and follows player smoothly
         void startTrackingBeam(Player player) {
+            beamAngle = angleToPlayer(player);
             laserState = LASER_TRACKING;
-            laserTimer = 180; // active for 3 seconds
+            laserTimer = 180;
             laserActive = true;
-            lockDirection(player);
             playBossLaserSound();
         }
 
-        // APEX: Channeling Beam — slowly charges up width and damage, fires for
-        // duration
+        // Channeling: locked direction, grows in width
         void startChannelingBeam(Player player) {
-            laserState = LASER_CHANNELING;
-            laserTimer = 240; // 4 seconds total
-            laserActive = true;
+            beamAngle = angleToPlayer(player);
             channelingBeamWidth = 2;
-            lockDirection(player); // locks direction at start
-            playBossLaserSound();
-        }
-
-        // APEX: Persistent Beam — fires in player direction, stays active long, slow
-        // rotation toward player
-        void startPersistentBeam(Player player) {
-            laserState = LASER_PERSISTENT;
-            laserTimer = 300; // 5 seconds
+            laserState = LASER_CHANNELING;
+            laserTimer = 240;
             laserActive = true;
-            lockDirection(player);
-            sweepAngle = Math.atan2(laserDirY, laserDirX);
             playBossLaserSound();
         }
 
-        // Lock a direction from boss center to player
-        void lockDirection(Player player) {
-            int ox = (int) bx + width / 2, oy = (int) by + height;
-            int px = player.x + player.size / 2, py = player.y + player.size / 2;
-            double ddx = px - ox, ddy = py - oy;
-            double len = Math.sqrt(ddx * ddx + ddy * ddy);
-            if (len < 1) {
-                ddx = 0;
-                ddy = 1;
-                len = 1;
-            }
-            laserDirX = ddx / len;
-            laserDirY = ddy / len;
-            laserEndX = ox + (int) (laserDirX * 1200);
-            laserEndY = oy + (int) (laserDirY * 1200);
+        // Persistent: fires at player, slowly sweeps
+        void startPersistentBeam(Player player) {
+            beamAngle = angleToPlayer(player);
+            sweepDir = rand.nextBoolean() ? 1 : -1;
+            laserState = LASER_PERSISTENT;
+            laserTimer = 300;
+            laserActive = true;
+            playBossLaserSound();
         }
 
         void updateLaserState(Player player) {
-            int ox = (int) bx + width / 2, oy = (int) by + height;
-
             if (laserState == LASER_TELEGRAPH) {
-                int telegraphMax = isSweepLaser ? 70 : 65;
-                if (laserTimer <= telegraphMax / 2) {
-                    if (isSweepLaser) {
-                        laserState = LASER_SWEEP;
-                        laserTimer = 80;
-                    } else {
-                        laserState = LASER_TARGET;
-                        laserTimer = 45;
-                        laserEndX = ox + (int) (laserDirX * 1200);
-                        laserEndY = oy + (int) (laserDirY * 1200);
-                    }
+                // Halfway through telegraph → switch to sweep
+                if (laserTimer <= 30) {
+                    laserState = LASER_SWEEP;
+                    laserTimer = 80;
                     laserActive = true;
                     playBossLaserSound();
                 }
+
             } else if (laserState == LASER_SWEEP) {
-                sweepAngle += sweepDir * 0.028;
-                if (sweepAngle > Math.PI * 2.2 || sweepAngle < Math.PI - 0.2)
+                // Sweep across
+                beamAngle += sweepDir * 0.030;
+                // Clamp to lower hemisphere
+                beamAngle = Math.max(Math.PI * 0.04, Math.min(Math.PI * 0.96, beamAngle));
+                if (beamAngle >= Math.PI * 0.96 || beamAngle <= Math.PI * 0.04)
                     sweepDir *= -1;
-            } else if (laserState == LASER_TARGET) {
-                laserEndX = ox + (int) (laserDirX * 1200);
-                laserEndY = oy + (int) (laserDirY * 1200);
 
             } else if (laserState == LASER_TRACKING) {
-                // Real-time tracking: rotate toward player each frame (lerp, not snap)
-                int px = player.x + player.size / 2, py = player.y + player.size / 2;
-                double ddx = px - ox, ddy = py - oy;
-                double len = Math.sqrt(ddx * ddx + ddy * ddy);
-                if (len > 1) {
-                    double targetAngle = Math.atan2(ddy / len, ddx / len);
-                    double currentAngle = Math.atan2(laserDirY, laserDirX);
-                    // Smoothly rotate toward target
-                    double diff = targetAngle - currentAngle;
-                    while (diff > Math.PI)
-                        diff -= 2 * Math.PI;
-                    while (diff < -Math.PI)
-                        diff += 2 * Math.PI;
-                    double rotateSpeed = 0.04; // degrees per frame toward player
-                    currentAngle += rotateSpeed * Math.signum(diff) * Math.min(Math.abs(diff), 1.0);
-                    laserDirX = Math.cos(currentAngle);
-                    laserDirY = Math.sin(currentAngle);
-                }
-                laserEndX = ox + (int) (laserDirX * 1200);
-                laserEndY = oy + (int) (laserDirY * 1200);
+                // Smoothly rotate toward player each frame
+                double target = angleToPlayer(player);
+                double diff = target - beamAngle;
+                while (diff > Math.PI)
+                    diff -= 2 * Math.PI;
+                while (diff < -Math.PI)
+                    diff += 2 * Math.PI;
+                beamAngle += 0.05 * Math.signum(diff) * Math.min(Math.abs(diff), 1.0);
+                beamAngle = Math.max(Math.PI * 0.04, Math.min(Math.PI * 0.96, beamAngle));
 
             } else if (laserState == LASER_CHANNELING) {
-                // Grows in width over time, direction locked
+                // Direction locked; width grows
                 int elapsed = 240 - laserTimer;
-                channelingBeamWidth = Math.min(2 + elapsed / 8, 28); // grows from 2 to 28
-                laserEndX = ox + (int) (laserDirX * 1200);
-                laserEndY = oy + (int) (laserDirY * 1200);
+                channelingBeamWidth = Math.min(2 + elapsed / 8, 28);
 
             } else if (laserState == LASER_PERSISTENT) {
-                // Slowly rotates toward player but lazily
-                int px = player.x + player.size / 2, py = player.y + player.size / 2;
-                double ddx = px - ox, ddy = py - oy;
-                double len = Math.sqrt(ddx * ddx + ddy * ddy);
-                if (len > 1) {
-                    double targetAngle = Math.atan2(ddy / len, ddx / len);
-                    double currentAngle = sweepAngle;
-                    double diff = targetAngle - currentAngle;
-                    while (diff > Math.PI)
-                        diff -= 2 * Math.PI;
-                    while (diff < -Math.PI)
-                        diff += 2 * Math.PI;
-                    sweepAngle += 0.012 * Math.signum(diff) * Math.min(Math.abs(diff), 1.0);
-                }
-                laserEndX = (int) (ox + Math.cos(sweepAngle) * 1200);
-                laserEndY = (int) (oy + Math.sin(sweepAngle) * 1200);
+                // Very slow rotation toward player
+                double target = angleToPlayer(player);
+                double diff = target - beamAngle;
+                while (diff > Math.PI)
+                    diff -= 2 * Math.PI;
+                while (diff < -Math.PI)
+                    diff += 2 * Math.PI;
+                beamAngle += 0.012 * Math.signum(diff) * Math.min(Math.abs(diff), 1.0);
+                beamAngle = Math.max(Math.PI * 0.04, Math.min(Math.PI * 0.96, beamAngle));
             }
         }
 
         boolean laserHitsPlayer(Rectangle hitbox) {
             if (!laserActive)
                 return false;
-            int ox = (int) bx + width / 2, oy = (int) by + height;
-            int ex, ey;
-            if (laserState == LASER_SWEEP) {
-                ex = (int) (ox + Math.cos(sweepAngle) * 1200);
-                ey = (int) (oy + Math.sin(sweepAngle) * 1200);
-            } else if (laserState == LASER_PERSISTENT) {
-                ex = (int) (ox + Math.cos(sweepAngle) * 1200);
-                ey = (int) (oy + Math.sin(sweepAngle) * 1200);
-            } else {
-                ex = laserEndX;
-                ey = laserEndY;
-            }
+            int ox = originX(), oy = originY();
+            int ex = beamEndX(), ey = beamEndY();
             int hw = (laserState == LASER_CHANNELING) ? channelingBeamWidth / 2 + 4 : 10;
-            Rectangle fat = new Rectangle(hitbox.x - hw, hitbox.y - hw, hitbox.width + hw * 2, hitbox.height + hw * 2);
+            Rectangle fat = new Rectangle(hitbox.x - hw, hitbox.y - hw,
+                    hitbox.width + hw * 2, hitbox.height + hw * 2);
             return fat.intersectsLine(ox, oy, ex, ey);
         }
 
         void draw(Graphics2D g2, int frame, Player player) {
             if (!alive)
                 return;
-            int cx = (int) bx + width / 2;
             float pulse = (float) (0.5 + 0.5 * Math.sin(pulsePhase));
-            if (laserState != LASER_NONE) {
-                drawBossLaser(g2, frame, cx, (int) bx + width / 2, (int) by + height, player);
+
+            // Draw lasers behind boss body
+            if (isApex && laserState != LASER_NONE) {
+                drawBossLaser(g2, frame);
             }
+
             Color baseColor = getBossColor();
             int glowAlpha = isApex ? (int) (55 + 45 * pulse) : (int) (35 + 25 * pulse);
             g2.setColor(new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), glowAlpha));
@@ -1965,6 +1977,7 @@ public class BulletHellGame extends JPanel
         }
 
         private void drawBossBody(Graphics2D g2, int frame, float pulse, Color base) {
+            int cxb = cx();
             g2.setColor(new Color(0, 0, 0, 60));
             g2.fillOval((int) bx + 6, (int) by + height - 6, width - 12, 10);
             Color hullColor = new Color(Math.min(255, base.getRed() + 30), Math.min(255, base.getGreen() + 20),
@@ -1972,13 +1985,12 @@ public class BulletHellGame extends JPanel
             GradientPaint hull = new GradientPaint((int) bx, (int) by, hullColor, (int) bx, (int) by + height,
                     base.darker());
             g2.setPaint(hull);
-            int[] hx = { cx() - width / 2 + 4, cx() - width / 2 + 16, cx() + width / 2 - 16, cx() + width / 2 - 4,
-                    cx() + width / 2 - 4, cx() - width / 2 + 4 };
+            int[] hx = { cxb - width / 2 + 4, cxb - width / 2 + 16, cxb + width / 2 - 16, cxb + width / 2 - 4,
+                    cxb + width / 2 - 4, cxb - width / 2 + 4 };
             int[] hy = { (int) by + 8, (int) by, (int) by, (int) by + 8, (int) by + height - 4, (int) by + height - 4 };
             g2.fillPolygon(hx, hy, 6);
             g2.setPaint(hull);
-            g2.fillPolygon(
-                    new int[] { (int) bx, (int) bx - 22, (int) bx - 10, (int) bx + 16 },
+            g2.fillPolygon(new int[] { (int) bx, (int) bx - 22, (int) bx - 10, (int) bx + 16 },
                     new int[] { (int) by + 12, (int) by + height - 4, (int) by + height, (int) by + height }, 4);
             g2.fillPolygon(
                     new int[] { (int) bx + width, (int) bx + width + 22, (int) bx + width + 10, (int) bx + width - 16 },
@@ -2000,32 +2012,33 @@ public class BulletHellGame extends JPanel
             if (waveNum >= 2) {
                 float cf = (float) (0.4 + 0.6 * Math.abs(Math.sin(frame * (isApex ? 0.14 : 0.07))));
                 g2.setColor(new Color(255, 255, 255, (int) (90 * cf)));
-                g2.fillOval(cx() - 18, (int) by + height / 2 - 12, 36, 24);
+                g2.fillOval(cxb - 18, (int) by + height / 2 - 12, 36, 24);
                 g2.setColor(new Color(base.getRed(), Math.min(255, base.getGreen() + 80),
                         Math.min(255, base.getBlue() + 80), (int) (160 * cf)));
-                g2.fillOval(cx() - 10, (int) by + height / 2 - 7, 20, 14);
+                g2.fillOval(cxb - 10, (int) by + height / 2 - 7, 20, 14);
             }
             g2.setColor(isApex ? new Color(255, 80, 0) : Color.YELLOW);
-            g2.fillOval(cx() - 22, (int) by + 14, 14, 14);
-            g2.fillOval(cx() + 8, (int) by + 14, 14, 14);
+            g2.fillOval(cxb - 22, (int) by + 14, 14, 14);
+            g2.fillOval(cxb + 8, (int) by + 14, 14, 14);
             g2.setColor(new Color(0, 0, 0));
-            g2.fillOval(cx() - 19, (int) by + 17, 8, 8);
-            g2.fillOval(cx() + 11, (int) by + 17, 8, 8);
+            g2.fillOval(cxb - 19, (int) by + 17, 8, 8);
+            g2.fillOval(cxb + 11, (int) by + 17, 8, 8);
             int eyeGlow = (int) (120 + 100 * pulse);
             g2.setColor(isApex ? new Color(255, 120, 0, eyeGlow) : new Color(255, 200, 0, eyeGlow));
-            g2.fillOval(cx() - 21, (int) by + 15, 4, 4);
-            g2.fillOval(cx() + 9, (int) by + 15, 4, 4);
+            g2.fillOval(cxb - 21, (int) by + 15, 4, 4);
+            g2.fillOval(cxb + 9, (int) by + 15, 4, 4);
             drawPhaseOrbs(g2, frame, pulse);
-            if (laserState == LASER_TELEGRAPH) {
-                int telegraphMax = isSweepLaser ? 70 : 65;
-                float tf = 1f - (laserTimer / (float) telegraphMax);
+
+            // Telegraph ring (APEX only)
+            if (isApex && laserState == LASER_TELEGRAPH) {
+                float tf = 1f - (laserTimer / 60f);
                 int ra = (int) (80 + 120 * tf);
                 g2.setColor(new Color(255, 30, 30, ra));
                 g2.setStroke(new BasicStroke(2f + tf * 3));
-                g2.drawOval(cx() - 24, (int) by - 6, 48, 48);
+                g2.drawOval(cxb - 24, (int) by - 6, 48, 48);
                 g2.setStroke(new BasicStroke(1));
                 g2.setColor(new Color(255, 60, 60, (int) (ra * 0.5f)));
-                g2.fillOval(cx() - 20, (int) by - 2, 40, 40);
+                g2.fillOval(cxb - 20, (int) by - 2, 40, 40);
             }
         }
 
@@ -2067,105 +2080,99 @@ public class BulletHellGame extends JPanel
             }
         }
 
-        private void drawBossLaser(Graphics2D g2, int frame, int centerX, int originX, int originY, Player player) {
-            int ox = originX, oy = originY;
+        // Draw the APEX laser beam based on current state
+        private void drawBossLaser(Graphics2D g2, int frame) {
+            int ox = originX(), oy = originY();
 
             if (laserState == LASER_TELEGRAPH) {
-                int ex2 = isSweepLaser ? (int) (ox + Math.cos(sweepAngle) * 1200) : laserEndX;
-                int ey2 = isSweepLaser ? (int) (oy + Math.sin(sweepAngle) * 1200) : laserEndY;
+                // Dashed preview line in direction of coming sweep
+                int ex = beamEndX(), ey = beamEndY();
                 int alpha = (int) (60 + 120 * Math.abs(Math.sin(frame * 0.25)));
                 g2.setColor(new Color(255, 0, 0, alpha));
                 g2.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f,
                         new float[] { 8f, 6f }, frame * 0.8f));
-                g2.drawLine(ox, oy, ex2, ey2);
+                g2.drawLine(ox, oy, ex, ey);
                 g2.setStroke(new BasicStroke(1));
-                int telegraphMax = isSweepLaser ? 70 : 65;
-                float telegraphProgress = 1f - (laserTimer / (float) telegraphMax);
-                if (telegraphProgress > 0.5f) {
+                float tf = 1f - laserTimer / 60f;
+                if (tf > 0.4f) {
                     g2.setFont(new Font("Arial", Font.BOLD, 14));
                     g2.setColor(new Color(255, 60, 60, (int) (180 * Math.abs(Math.sin(frame * 0.3)))));
                     g2.drawString("⚠ LASER!", ox - 20, oy - 12);
                 }
 
             } else if (laserState == LASER_SWEEP) {
-                int ex2 = (int) (ox + Math.cos(sweepAngle) * 1200);
-                int ey2 = (int) (oy + Math.sin(sweepAngle) * 1200);
-                drawActiveBossBeam(g2, frame, ox, oy, ex2, ey2, new Color(255, 30, 30), 80, 8f);
-
-            } else if (laserState == LASER_TARGET) {
-                drawActiveBossBeam(g2, frame, ox, oy, laserEndX, laserEndY, new Color(255, 80, 0), 45, 8f);
+                drawActiveBossBeam(g2, frame, ox, oy, beamEndX(), beamEndY(),
+                        new Color(255, 30, 30), 80, 8f, null);
 
             } else if (laserState == LASER_TRACKING) {
-                // Tracking Beam: cyan-tinted, medium width, tracks player
-                int ex2 = laserEndX, ey2 = laserEndY;
-
-                // Draw with pulsing intensity to show it's actively tracking
-                drawActiveBossBeam(g2, frame, ox, oy, ex2, ey2, new Color(0, 200, 255), 180, 7f);
-                // Label
-                g2.setFont(new Font("Arial", Font.BOLD, 11));
-                g2.setColor(new Color(0, 220, 255, (int) (160 * Math.abs(Math.sin(frame * 0.15)))));
-                g2.drawString("TRACKING", ox - 24, oy - 14);
+                drawActiveBossBeam(g2, frame, ox, oy, beamEndX(), beamEndY(),
+                        new Color(0, 200, 255), 180, 7f, "TRACKING");
 
             } else if (laserState == LASER_CHANNELING) {
-                // Channeling Beam: grows wider and brighter over time
-                int ex2 = laserEndX, ey2 = laserEndY;
                 int w = channelingBeamWidth;
                 float intensity = Math.min(1f, w / 28f);
                 Color beamColor = new Color(
                         (int) (255 * intensity),
                         (int) (100 - 100 * intensity),
                         (int) (255 - 200 * intensity));
+                int ex = beamEndX(), ey = beamEndY();
                 // Outer glow
                 g2.setColor(new Color(beamColor.getRed(), beamColor.getGreen(), beamColor.getBlue(),
                         (int) (20 * intensity)));
                 g2.setStroke(new BasicStroke(w * 3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                g2.drawLine(ox, oy, ex2, ey2);
-                // Core beam
+                g2.drawLine(ox, oy, ex, ey);
+                // Core
                 g2.setColor(new Color(beamColor.getRed(), beamColor.getGreen(), beamColor.getBlue(),
                         (int) (200 * intensity)));
                 g2.setStroke(new BasicStroke(Math.max(1, w), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                g2.drawLine(ox, oy, ex2, ey2);
+                g2.drawLine(ox, oy, ex, ey);
                 // White hot center
                 g2.setColor(new Color(255, 255, 255, (int) (220 * intensity)));
                 g2.setStroke(new BasicStroke(Math.max(1, w / 3), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                g2.drawLine(ox, oy, ex2, ey2);
+                g2.drawLine(ox, oy, ex, ey);
                 g2.setStroke(new BasicStroke(1));
                 g2.setFont(new Font("Arial", Font.BOLD, 11));
                 g2.setColor(new Color(255, 140, 0, (int) (180 * Math.abs(Math.sin(frame * 0.2)))));
                 g2.drawString("CHANNELING", ox - 28, oy - 14);
 
             } else if (laserState == LASER_PERSISTENT) {
-                // Persistent Beam: orange-red, wide, stays active, slowly tracks
-                int ex2 = (int) (ox + Math.cos(sweepAngle) * 1200);
-                int ey2 = (int) (oy + Math.sin(sweepAngle) * 1200);
-                drawActiveBossBeam(g2, frame, ox, oy, ex2, ey2, new Color(255, 80, 0), 300, 10f);
-                g2.setFont(new Font("Arial", Font.BOLD, 11));
-                g2.setColor(new Color(255, 100, 0, (int) (160 * Math.abs(Math.sin(frame * 0.1)))));
-                g2.drawString("PERSISTENT", ox - 26, oy - 14);
+                drawActiveBossBeam(g2, frame, ox, oy, beamEndX(), beamEndY(),
+                        new Color(255, 80, 0), 300, 10f, "PERSISTENT");
             }
         }
 
         private void drawActiveBossBeam(Graphics2D g2, int frame, int x1, int y1, int x2, int y2,
-                Color beamColor, int totalFrames, float baseWidth) {
+                Color beamColor, int totalFrames, float baseWidth, String label) {
             float t = Math.max(0.1f, (float) laserTimer / totalFrames);
+            // Outer glow
             g2.setColor(new Color(beamColor.getRed(), beamColor.getGreen(), beamColor.getBlue(), (int) (15 * t)));
             g2.setStroke(new BasicStroke(baseWidth * 4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2.drawLine(x1, y1, x2, y2);
+            // Mid glow
             g2.setColor(new Color(beamColor.getRed(), beamColor.getGreen(), beamColor.getBlue(), (int) (55 * t)));
             g2.setStroke(new BasicStroke(baseWidth * 2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2.drawLine(x1, y1, x2, y2);
+            // Core
             g2.setColor(new Color(255, 160, 80, (int) (130 * t)));
             g2.setStroke(new BasicStroke(baseWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2.drawLine(x1, y1, x2, y2);
+            // White hot center
             g2.setColor(new Color(255, 255, 255, (int) (230 * t)));
             g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2.drawLine(x1, y1, x2, y2);
             g2.setStroke(new BasicStroke(1));
+            // Sparkles at origin
             rand.setSeed(frame * 13L);
             for (int sp = 0; sp < 6; sp++) {
                 double ang = rand.nextDouble() * Math.PI * 2, r = 5 + rand.nextInt(10);
                 g2.setColor(new Color(255, 180, 80, (int) (180 * t)));
                 g2.fillOval((int) (x1 + Math.cos(ang) * r) - 2, (int) (y1 + Math.sin(ang) * r) - 2, 4, 4);
+            }
+            if (label != null) {
+                g2.setFont(new Font("Arial", Font.BOLD, 11));
+                g2.setColor(new Color(beamColor.getRed(), beamColor.getGreen(), beamColor.getBlue(),
+                        (int) (160 * Math.abs(Math.sin(frame * 0.12)))));
+                g2.drawString(label, x1 - 26, y1 - 14);
             }
         }
 
