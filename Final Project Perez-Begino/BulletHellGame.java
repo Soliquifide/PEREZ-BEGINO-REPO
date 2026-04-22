@@ -75,24 +75,76 @@ public class BulletHellGame extends JPanel
     private int currentScene = SCENE_SPACE;
 
     // ── Shop ─────────────────────────────────────────────────────────
-    static final int SHOP_EXTRA_LIFE  = 0;
-    static final int SHOP_SHIELD      = 1;
-    static final int SHOP_DOUBLE_SHOT = 2;
-    static final int SHOP_SPEED_BOOST = 3;
-    static final int SHOP_NUKE        = 4;
-    static final int SHOP_REPAIR      = 5;
-    static final int SHOP_ITEM_COUNT  = 6;
-    static final String[] SHOP_NAMES = {"EXTRA LIFE","SHIELD","DOUBLE SHOT","SPEED BOOST","NUKE ALL","REPAIR HP"};
-    static final String[] SHOP_DESCS = {"Gain +1 life","Block 1 hit","2x bullets 15s","Move faster 15s","Clear all bullets","Restore 1 life"};
-    static final int[]    SHOP_COSTS = {600, 300, 250, 200, 400, 500};
-    private final Rectangle[] btnShopItems = {
-        new Rectangle(20, 200, 172, 110), new Rectangle(214,200,172,110), new Rectangle(408,200,172,110),
-        new Rectangle(20, 330, 172, 110), new Rectangle(214,330,172,110), new Rectangle(408,330,172,110),
+    // These are SHOP-ONLY permanent upgrades — never drop from boss
+    static final int SHOP_EXTRA_LIFE  = 0;  // +1 life (instant)
+    static final int SHOP_SPEED_BOOST = 1;  // move faster — permanent
+    static final int SHOP_RAPID_FIRE  = 2;  // 2× fire rate — permanent
+    static final int SHOP_BULLET_TIME = 3;  // enemy bullets 50% slower — permanent
+    static final int SHOP_SCORE_RUSH  = 4;  // 2× score — permanent
+    static final int SHOP_PHASE_SHIFT = 5;  // invincible frame on dash — permanent
+    static final int SHOP_NUKE        = 6;  // clear all bullets (instant)
+    static final int SHOP_REPAIR      = 7;  // restore 1 HP (instant)
+    static final int SHOP_POOL_SIZE   = 8;
+    static final int SHOP_OFFERED     = 3;
+
+    static final String[] SHOP_NAMES = {
+        "BLOOD PACT",     // extra life
+        "AETHER STRIDE",  // speed
+        "FRENZY CORE",    // rapid fire
+        "CLOCK FRACTURE", // bullet time
+        "GOLD RUSH",      // score rush
+        "GHOST WALK",     // phase shift / invincibility
+        "SINGULARITY",    // nuke
+        "NANO MEND"       // repair
     };
-    private final boolean[] shopBought = new boolean[SHOP_ITEM_COUNT];
-    private final Rectangle btnShopContinue = new Rectangle(WIDTH/2-110,490,220,54);
+    static final String[] SHOP_DESCS = {
+        "+1 life permanently",
+        "Move speed +2 forever",
+        "2× fire rate forever",
+        "Enemy bullets half speed forever",
+        "2× score per kill forever",
+        "Brief invincibility on hit forever",
+        "Clears all enemy bullets",
+        "Restore 1 HP"
+    };
+    static final String[] SHOP_FLAVORS = {
+        "\"Death? Not today.\"",
+        "\"They can't hit what they can't see.\"",
+        "\"Blink and you miss it.\"",
+        "\"Time bends. You don't.\"",
+        "\"Every kill, doubled.\"",
+        "\"You were never here.\"",
+        "\"Everything. Gone.\"",
+        "\"Patching wounds mid-war.\""
+    };
+    // 0=Common 1=Rare 2=Legendary
+    static final int[] SHOP_RARITY  = {1, 0, 1, 2, 1, 2, 1, 0};
+    static final String[] RARITY_LABEL = {"COMMON", "RARE", "LEGENDARY"};
+    static final Color[]  RARITY_COLOR = {
+        new Color(160, 160, 180),
+        new Color(80,  160, 255),
+        new Color(255, 180,   0)
+    };
+    static final int[] SHOP_COSTS = {500, 150, 280, 500, 250, 550, 350, 400};
+    // 3 large cards centered in a single row
+    private static final int SC_W=172, SC_H=150, SC_GAP=18;
+    private static final int SC_Y=210;
+    private static final int SC_X0 = WIDTH/2 - (SC_W*3+SC_GAP*2)/2;
+    private final Rectangle[] btnShopItems = {
+        new Rectangle(SC_X0,              SC_Y, SC_W, SC_H),
+        new Rectangle(SC_X0+SC_W+SC_GAP,  SC_Y, SC_W, SC_H),
+        new Rectangle(SC_X0+(SC_W+SC_GAP)*2, SC_Y, SC_W, SC_H),
+    };
+    private final boolean[] shopBought      = new boolean[SHOP_OFFERED]; // per-slot
+    private int[]           shopOfferedItems = new int[]{0,1,2};          // filled in openShop()
+    private final Rectangle btnShopContinue = new Rectangle(WIDTH/2-110, 400, 220, 54);
+    // ── Shop permanent upgrades (active until game over) ─────────────
     private boolean shopSpeedBoost = false;
-    private int     shopSpeedTimer = 0;
+    private boolean shopRapidFire  = false;
+    private boolean shopBulletTime = false;
+    private boolean shopScoreRush  = false;
+    private boolean shopPhaseShift = false;  // brief invincibility frames on hit
+    private int     powerUpDropCD  = 0;
     private int sceneTransAlpha = 0;
     private final int[] s1x = new int[60], s1y = new int[60], s1b = new int[60];
     private final int[] s2x = new int[35], s2y = new int[35], s2b = new int[35];
@@ -453,7 +505,6 @@ public class BulletHellGame extends JPanel
 
         boolean wantsFire = (fireMode == FIRE_SPACE && keys[KeyEvent.VK_SPACE])
                 || (fireMode == FIRE_MOUSE && mouseFireHeld);
-        if (shopSpeedBoost && --shopSpeedTimer <= 0) shopSpeedBoost = false;
         int baseSpd = player.speed + (shopSpeedBoost ? 2 : 0);
         int spd = baseSpd;
 
@@ -533,7 +584,7 @@ public class BulletHellGame extends JPanel
         if (selectedClass == CLASS_NOVA && novaLaserActive && !bossTransition && boss.alive) {
             if (laserHitsBoss(boss.getBounds())) {
                 boss.hp -= 1.5;
-                score += 6;
+                score += (shopScoreRush ? 12 : 6);
                 novaAccumulatedDmg += 1.5;
                 if (boss.hp <= 0 && boss.alive) {
                     boss.alive = false;
@@ -559,17 +610,21 @@ public class BulletHellGame extends JPanel
             if (!bossTransition && boss.alive && boss.getBounds().intersects(b.getBounds())) {
                 playerBullets.remove(i);
                 boss.hp--;
-                score += 10;
+                score += (shopScoreRush ? 20 : 10);
                 damageIndicators.add(new DamageIndicator(
                         boss.x + rand.nextInt(boss.width),
                         boss.y + rand.nextInt(boss.height / 2),
                         "-1", new Color(255, 220, 80)));
-                if (rand.nextInt(20) == 0) {
+                // Drop a field powerup: only 1-in-60 chance AND respect cooldown
+                if (powerUpDropCD <= 0 && rand.nextInt(60) == 0) {
                     int dt = rand.nextInt(PU_COUNT);
                     boolean dup = (dt == PU_DOUBLE_SHOT && doubleShot) || (dt == PU_SHIELD && hasShield);
-                    if (!dup)
+                    if (!dup) {
                         powerUps.add(new PowerUp(boss.x + boss.width / 2, boss.y + boss.height, dt));
+                        powerUpDropCD = 180; // ~3 second gap between drops
+                    }
                 }
+                if (powerUpDropCD > 0) powerUpDropCD--;
                 if (boss.hp <= 0 && boss.alive) {
                     boss.alive = false; // mark immediately before calling bossDefeated
                     bossDefeated();
@@ -581,12 +636,14 @@ public class BulletHellGame extends JPanel
         // Enemy bullets vs player
         for (int i = enemyBullets.size() - 1; i >= 0; i--) {
             Bullet b = enemyBullets.get(i);
-            b.update();
+            // Bullet Time: enemy bullets move at ~55% speed (skip update on odd frames)
+            if (!shopBulletTime || frameCount % 2 == 0) b.update();
             if (b.y > HEIGHT + 10 || b.x < -10 || b.x > WIDTH + 10) {
                 enemyBullets.remove(i);
                 continue;
             }
             if (player.alive && player.getHitbox().intersects(b.getBounds())) {
+                if (shopPhaseShift) { enemyBullets.remove(i); continue; } // invincible
                 if (hasShield) {
                     enemyBullets.remove(i);
                     hasShield = false;
@@ -611,7 +668,7 @@ public class BulletHellGame extends JPanel
 
         // Boss laser vs player (APEX ONLY)
         if (!bossTransition && boss.alive && boss.laserActive && boss.isApex) {
-            if (player.alive && boss.laserHitsPlayer(player.getHitbox())) {
+            if (player.alive && !shopPhaseShift && boss.laserHitsPlayer(player.getHitbox())) {
                 if (hasShield) {
                     hasShield = false;
                     shieldTimer = 0;
@@ -650,7 +707,7 @@ public class BulletHellGame extends JPanel
             }
             if (!bossTransition && boss.alive && boss.getBounds().intersects(s.getBounds())) {
                 boss.hp -= 2;
-                score += 15;
+                score += (shopScoreRush ? 30 : 15);
                 s.dead = true;
                 damageIndicators.add(new DamageIndicator(
                         boss.x + rand.nextInt(boss.width),
@@ -748,24 +805,44 @@ public class BulletHellGame extends JPanel
     }
 
     private void openShop() {
-        for (int i = 0; i < SHOP_ITEM_COUNT; i++) shopBought[i] = false;
+        // Randomly pick 3 distinct items from the full pool of 10
+        java.util.List<Integer> pool = new java.util.ArrayList<>();
+        for (int i = 0; i < SHOP_POOL_SIZE; i++) pool.add(i);
+        java.util.Collections.shuffle(pool, rand);
+        shopOfferedItems[0] = pool.get(0);
+        shopOfferedItems[1] = pool.get(1);
+        shopOfferedItems[2] = pool.get(2);
+        for (int i = 0; i < SHOP_OFFERED; i++) shopBought[i] = false;
         gameState = STATE_SHOP;
     }
 
-    private void buyShopItem(int idx) {
-        if (shopBought[idx] || score < SHOP_COSTS[idx]) return;
+    private void buyShopItem(int slot) {
+        if (slot < 0 || slot >= SHOP_OFFERED) return;
+        if (shopBought[slot]) return;
+        int idx = shopOfferedItems[slot];          // real item type from the pool
+        if (score < SHOP_COSTS[idx]) return;
         score -= SHOP_COSTS[idx];
-        shopBought[idx] = true;
+        shopBought[slot] = true;
         switch (idx) {
-            case SHOP_EXTRA_LIFE:  player.lives++; pickupMsg = "EXTRA LIFE!"; break;
-            case SHOP_SHIELD:      hasShield = true; shieldTimer = 9999; pickupMsg = "SHIELD UP!"; break;
-            case SHOP_DOUBLE_SHOT: doubleShot = true; doubleShotTimer = 900; pickupMsg = "DOUBLE SHOT!"; break;
-            case SHOP_SPEED_BOOST: shopSpeedBoost = true; shopSpeedTimer = 900; pickupMsg = "SPEED BOOST!"; break;
-            case SHOP_NUKE:        enemyBullets.clear(); score += 80; pickupMsg = "NUKE!"; shakeTimer = 16; shakeIntensity = 5; break;
+            case SHOP_EXTRA_LIFE:
+                player.lives++; pickupMsg = "BLOOD PACT — +1 LIFE!"; break;
+            case SHOP_SPEED_BOOST:
+                shopSpeedBoost = true; pickupMsg = "AETHER STRIDE — SPEED UP!"; break;
+            case SHOP_RAPID_FIRE:
+                shopRapidFire  = true; pickupMsg = "FRENZY CORE — RAPID FIRE!"; break;
+            case SHOP_BULLET_TIME:
+                shopBulletTime = true; pickupMsg = "CLOCK FRACTURE — SLOW BULLETS!"; break;
+            case SHOP_SCORE_RUSH:
+                shopScoreRush  = true; pickupMsg = "GOLD RUSH — 2x SCORE!"; break;
+            case SHOP_PHASE_SHIFT:
+                shopPhaseShift = true; pickupMsg = "GHOST WALK — INVINCIBILITY!"; break;
+            case SHOP_NUKE:
+                enemyBullets.clear(); score += 80; shakeTimer = 16; shakeIntensity = 5;
+                pickupMsg = "SINGULARITY — BULLETS ERASED!"; break;
             case SHOP_REPAIR:
                 int maxLives = new int[]{5,3,2}[difficulty];
-                if (player.lives < maxLives) { player.lives++; pickupMsg = "REPAIRED!"; }
-                else { score += SHOP_COSTS[idx]; shopBought[idx] = false; pickupMsg = "Already full HP!"; }
+                if (player.lives < maxLives) { player.lives++; pickupMsg = "NANO MEND — HP RESTORED!"; }
+                else { score += SHOP_COSTS[idx]; shopBought[slot] = false; pickupMsg = "Already at full HP!"; }
                 break;
         }
         pickupTimer = 90;
@@ -788,7 +865,8 @@ public class BulletHellGame extends JPanel
         } else if (!wantsFire)
             heat = Math.max(0, heat - HEAT_COOL_RATE);
 
-        if (!overheated && wantsFire && frameCount % FIRE_RATE == 0) {
+        int activeFireRate = (shopRapidFire ? FIRE_RATE / 2 : FIRE_RATE);
+        if (!overheated && wantsFire && frameCount % Math.max(1, activeFireRate) == 0) {
             int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
             double dx = mouseX - pcx, dy = mouseY - pcy, len = Math.sqrt(dx * dx + dy * dy), bs = 14;
             double bvx = 0, bvy = -bs;
@@ -1657,136 +1735,303 @@ public class BulletHellGame extends JPanel
     // ═══════════════════════════════════════════════════════════════════
     // ★ SHOP SCREEN
     // ═══════════════════════════════════════════════════════════════════
+    // Accent colour for each pool item (index 0-9)
+    private static final Color[] SHOP_ACCENT = {
+        new Color( 60, 220,  80),  // 0 BLOOD PACT     – green
+        new Color(255, 200,   0),  // 1 AETHER STRIDE  – yellow
+        new Color(255, 130,  30),  // 2 FRENZY CORE    – orange
+        new Color(  0, 200, 180),  // 3 CLOCK FRACTURE – teal
+        new Color(255, 220,  80),  // 4 GOLD RUSH      – gold
+        new Color(160,   0, 255),  // 5 GHOST WALK     – violet
+        new Color(255,  60,  60),  // 6 SINGULARITY    – red
+        new Color(200,  80, 255),  // 7 NANO MEND      – purple
+    };
+
     private void drawShop(Graphics2D g2) {
-        // Dark space background with stars
-        g2.setColor(new Color(6,6,22)); g2.fillRect(0,0,WIDTH,HEIGHT);
+        // ── Dark armory background ────────────────────────────────────
+        GradientPaint bg = new GradientPaint(0,0,new Color(4,4,14),0,HEIGHT,new Color(10,6,28));
+        g2.setPaint(bg); g2.fillRect(0,0,WIDTH,HEIGHT);
+        // Scanlines
+        g2.setColor(new Color(0,0,0,28));
+        for (int y=0;y<HEIGHT;y+=3) g2.fillRect(0,y,WIDTH,1);
+        // Stars
         for (int i=0;i<starX.length;i++){
-            float f=(float)(0.4+0.3*Math.sin(frameCount*0.03+i));
-            int br=(int)(80+80*f);
-            g2.setColor(new Color(br,br,Math.min(255,br+20)));
+            float f=(float)(0.3+0.2*Math.sin(frameCount*0.02+i));
+            int br=(int)(50+55*f);
+            g2.setColor(new Color(br,br,Math.min(255,br+30)));
             g2.fillRect(starX[i],starY[i],starSz[i],starSz[i]);
         }
-        // Header panel
-        g2.setColor(new Color(0,0,0,160)); g2.fillRect(0,0,WIDTH,170);
-        // Title
-        g2.setFont(new Font("Arial",Font.BOLD,42));
-        g2.setColor(new Color(255,200,0));
-        String title="WAVE "+(wave-1)+" CLEAR!";
-        g2.drawString(title,WIDTH/2-g2.getFontMetrics().stringWidth(title)/2,52);
-        // Subtitle
-        g2.setFont(new Font("Arial",Font.BOLD,20));
-        g2.setColor(Color.WHITE);
-        String sub="UPGRADE SHOP";
-        g2.drawString(sub,WIDTH/2-g2.getFontMetrics().stringWidth(sub)/2,88);
-        // Score display
-        g2.setFont(new Font("Courier New",Font.BOLD,18));
-        g2.setColor(new Color(255,220,80));
-        String sc="SCORE: "+score;
-        g2.drawString(sc,WIDTH/2-g2.getFontMetrics().stringWidth(sc)/2,120);
-        // Hint
-        g2.setFont(new Font("Arial",Font.ITALIC,13));
-        g2.setColor(new Color(140,140,200));
-        String hint="Click an item to buy  ·  ENTER or Continue to play";
-        g2.drawString(hint,WIDTH/2-g2.getFontMetrics().stringWidth(hint)/2,148);
 
-        // Draw 6 shop item cards (2 rows of 3)
-        Color[] accentCols={
-            new Color(60,220,80),   // extra life  - green
-            new Color(80,150,255),  // shield      - blue
-            new Color(0,220,255),   // double shot - cyan
-            new Color(255,200,0),   // speed       - yellow
-            new Color(255,60,60),   // nuke        - red
-            new Color(200,80,255),  // repair      - purple
-        };
-        for (int i=0;i<SHOP_ITEM_COUNT;i++){
-            Rectangle r=btnShopItems[i];
-            Color ac=accentCols[i];
-            boolean bought=shopBought[i];
-            boolean canAfford=score>=SHOP_COSTS[i];
-            // Card background
-            g2.setColor(bought?new Color(10,30,10,220):new Color(10,10,28,230));
-            g2.fillRoundRect(r.x,r.y,r.width,r.height,14,14);
-            // Border — bright if affordable, dim if not
-            g2.setColor(bought?new Color(60,200,60):canAfford?ac:new Color(60,60,80));
-            g2.setStroke(new BasicStroke(bought?2.5f:1.5f));
-            g2.drawRoundRect(r.x,r.y,r.width,r.height,14,14);
+        // ── Header ────────────────────────────────────────────────────
+        g2.setColor(new Color(0,0,0,200)); g2.fillRect(0,0,WIDTH,152);
+        // Glow divider
+        g2.setPaint(new GradientPaint(0,152,new Color(120,60,255,0),
+                WIDTH/2,152,new Color(180,100,255,120)));
+        g2.fillRect(0,150,WIDTH,2);
+
+        g2.setFont(new Font("Arial",Font.BOLD,11));
+        g2.setColor(new Color(160,100,255,200));
+        String sub="— BLACK MARKET —";
+        g2.drawString(sub,WIDTH/2-g2.getFontMetrics().stringWidth(sub)/2,26);
+
+        // Title shadow + text
+        g2.setFont(new Font("Arial",Font.BOLD,42));
+        String title="WAVE "+(wave-1)+" CLEAR";
+        int tw=g2.getFontMetrics().stringWidth(title);
+        g2.setColor(new Color(100,0,200,80)); g2.drawString(title,WIDTH/2-tw/2+2,72);
+        g2.setColor(new Color(230,200,255));  g2.drawString(title,WIDTH/2-tw/2,70);
+
+        // Score pill
+        g2.setFont(new Font("Courier New",Font.BOLD,19));
+        String sc="⬡ "+score+" pts";
+        int sw=g2.getFontMetrics().stringWidth(sc);
+        g2.setColor(new Color(50,50,0,160));
+        g2.fillRoundRect(WIDTH/2-sw/2-12,93,sw+24,26,10,10);
+        g2.setColor(new Color(255,220,60)); g2.drawString(sc,WIDTH/2-sw/2,112);
+
+        // Hint
+        g2.setFont(new Font("Arial",Font.PLAIN,11));
+        g2.setColor(new Color(90,80,130));
+        String hint="All upgrades are PERMANENT — they last until game over";
+        g2.drawString(hint,WIDTH/2-g2.getFontMetrics().stringWidth(hint)/2,138);
+
+        // ── 3 Item Cards ──────────────────────────────────────────────
+        int cardW=170, cardH=228, gap=18;
+        int cx0=WIDTH/2-(cardW*3+gap*2)/2, cardY=162;
+
+        for (int slot=0;slot<SHOP_OFFERED;slot++){
+            int  idx      = shopOfferedItems[slot];
+            int  rx       = cx0+slot*(cardW+gap);
+            boolean bought    = shopBought[slot];
+            boolean canAfford = score>=SHOP_COSTS[idx];
+            int  rar      = SHOP_RARITY[idx];
+            Color rarC    = RARITY_COLOR[rar];
+            Color ac      = SHOP_ACCENT[idx];
+
+            // Outer glow
+            if (!bought && canAfford){
+                float pulse=(float)(0.3+0.2*Math.sin(frameCount*0.08+slot*1.1));
+                g2.setColor(new Color(rarC.getRed(),rarC.getGreen(),rarC.getBlue(),(int)(38*pulse)));
+                g2.fillRoundRect(rx-6,cardY-6,cardW+12,cardH+12,20,20);
+            }
+            // Card body
+            GradientPaint cBg=bought
+                ?new GradientPaint(rx,cardY,new Color(8,28,8),rx,cardY+cardH,new Color(4,14,4))
+                :new GradientPaint(rx,cardY,new Color(14,10,32),rx,cardY+cardH,new Color(6,4,18));
+            g2.setPaint(cBg); g2.fillRoundRect(rx,cardY,cardW,cardH,14,14);
+            // Border
+            g2.setColor(bought?new Color(40,160,40):canAfford?rarC:new Color(40,38,58));
+            g2.setStroke(new BasicStroke(bought?2.5f:canAfford?2f:1f));
+            g2.drawRoundRect(rx,cardY,cardW,cardH,14,14);
             g2.setStroke(new BasicStroke(1));
-            // Accent glow behind card
-            if (canAfford&&!bought){
-                float pulse=(float)(0.3+0.2*Math.sin(frameCount*0.09+i));
-                g2.setColor(new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),(int)(18*pulse)));
-                g2.fillRoundRect(r.x-3,r.y-3,r.width+6,r.height+6,16,16);
-            }
-            if (bought){
-                // SOLD banner
-                g2.setColor(new Color(60,200,60));
-                g2.fillRoundRect(r.x+r.width/2-28,r.y+8,56,20,8,8);
-                g2.setFont(new Font("Arial",Font.BOLD,11));
-                g2.setColor(new Color(6,6,22));
-                g2.drawString("BOUGHT",r.x+r.width/2-22,r.y+22);
-            }
+
+            // Rarity badge
+            g2.setColor(new Color(rarC.getRed(),rarC.getGreen(),rarC.getBlue(),bought?70:155));
+            g2.fillRoundRect(rx+cardW/2-34,cardY+8,68,16,6,6);
+            g2.setFont(new Font("Arial",Font.BOLD,9));
+            g2.setColor(new Color(6,4,18));
+            String rLbl=RARITY_LABEL[rar];
+            g2.drawString(rLbl,rx+cardW/2-g2.getFontMetrics().stringWidth(rLbl)/2,cardY+19);
+
+            // Icon
+            drawShopIcon(g2,idx,rx+cardW/2,cardY+66,bought?0.35f:1f,frameCount);
+
+            // PERMANENT badge
+            g2.setFont(new Font("Arial",Font.BOLD,8));
+            g2.setColor(new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),bought?60:130));
+            g2.fillRoundRect(rx+cardW/2-30,cardY+96,60,13,5,5);
+            g2.setColor(new Color(6,4,18));
+            g2.drawString("★ PERMANENT ★",rx+cardW/2-g2.getFontMetrics().stringWidth("★ PERMANENT ★")/2,cardY+106);
+
             // Item name
             g2.setFont(new Font("Arial",Font.BOLD,14));
-            g2.setColor(bought?new Color(80,200,80):canAfford?Color.WHITE:new Color(100,100,130));
-            FontMetrics fm=g2.getFontMetrics();
-            String name=SHOP_NAMES[i];
-            g2.drawString(name,r.x+r.width/2-fm.stringWidth(name)/2,r.y+48);
-            // Description
-            g2.setFont(new Font("Arial",Font.ITALIC,11));
-            g2.setColor(bought?new Color(60,160,60):canAfford?new Color(180,200,255):new Color(80,80,110));
-            fm=g2.getFontMetrics();
-            String desc=SHOP_DESCS[i];
-            g2.drawString(desc,r.x+r.width/2-fm.stringWidth(desc)/2,r.y+66);
-            // Cost
-            g2.setFont(new Font("Courier New",Font.BOLD,15));
-            g2.setColor(bought?new Color(60,160,60):canAfford?new Color(255,220,80):new Color(180,60,60));
-            String cost=bought?"---":"$"+SHOP_COSTS[i];
-            fm=g2.getFontMetrics();
-            g2.drawString(cost,r.x+r.width/2-fm.stringWidth(cost)/2,r.y+90);
-            // Can't afford label
-            if (!bought&&!canAfford){
-                g2.setFont(new Font("Arial",Font.PLAIN,9));
-                g2.setColor(new Color(180,60,60));
-                String poor="Need $"+(SHOP_COSTS[i]-score)+" more";
-                fm=g2.getFontMetrics();
-                g2.drawString(poor,r.x+r.width/2-fm.stringWidth(poor)/2,r.y+104);
+            g2.setColor(bought?new Color(70,160,70):canAfford?Color.WHITE:new Color(80,78,100));
+            FontMetrics nfm=g2.getFontMetrics();
+            g2.drawString(SHOP_NAMES[idx],rx+cardW/2-nfm.stringWidth(SHOP_NAMES[idx])/2,cardY+124);
+
+            // Stat line
+            g2.setFont(new Font("Arial",Font.BOLD,10));
+            g2.setColor(bought?new Color(50,130,50):canAfford?new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),220):new Color(65,63,85));
+            FontMetrics dfm=g2.getFontMetrics();
+            g2.drawString(SHOP_DESCS[idx],rx+cardW/2-dfm.stringWidth(SHOP_DESCS[idx])/2,cardY+140);
+
+            // Flavor text (word-wrapped)
+            g2.setFont(new Font("Arial",Font.ITALIC,9));
+            g2.setColor(bought?new Color(40,100,40,170):new Color(110,100,150,200));
+            String flav=SHOP_FLAVORS[idx];
+            FontMetrics ffm=g2.getFontMetrics();
+            if (ffm.stringWidth(flav)>cardW-16){
+                int sp=flav.lastIndexOf(' ',flav.length()/2);
+                if (sp<0) sp=flav.length()/2;
+                g2.drawString(flav.substring(0,sp),    rx+cardW/2-ffm.stringWidth(flav.substring(0,sp))/2,   cardY+158);
+                g2.drawString(flav.substring(sp+1),    rx+cardW/2-ffm.stringWidth(flav.substring(sp+1))/2,   cardY+169);
+            } else {
+                g2.drawString(flav,rx+cardW/2-ffm.stringWidth(flav)/2,cardY+163);
+            }
+
+            // Price / ACQUIRED
+            if (bought){
+                g2.setColor(new Color(40,160,40,200));
+                g2.fillRoundRect(rx+cardW/2-36,cardY+cardH-42,72,24,8,8);
+                g2.setFont(new Font("Arial",Font.BOLD,12));
+                g2.setColor(new Color(6,4,18));
+                g2.drawString("ACQUIRED",rx+cardW/2-g2.getFontMetrics().stringWidth("ACQUIRED")/2,cardY+cardH-25);
+            } else {
+                Color prC=canAfford?new Color(255,210,50):new Color(200,60,60);
+                g2.setColor(new Color(prC.getRed(),prC.getGreen(),prC.getBlue(),40));
+                g2.fillRoundRect(rx+cardW/2-36,cardY+cardH-44,72,26,8,8);
+                g2.setColor(prC); g2.setStroke(new BasicStroke(1f));
+                g2.drawRoundRect(rx+cardW/2-36,cardY+cardH-44,72,26,8,8);
+                g2.setStroke(new BasicStroke(1));
+                g2.setFont(new Font("Courier New",Font.BOLD,15));
+                String price="$"+SHOP_COSTS[idx];
+                g2.setColor(prC);
+                g2.drawString(price,rx+cardW/2-g2.getFontMetrics().stringWidth(price)/2,cardY+cardH-27);
+                if (!canAfford){
+                    g2.setFont(new Font("Arial",Font.PLAIN,8));
+                    g2.setColor(new Color(180,60,60,180));
+                    String nd="need $"+(SHOP_COSTS[idx]-score)+" more";
+                    g2.drawString(nd,rx+cardW/2-g2.getFontMetrics().stringWidth(nd)/2,cardY+cardH-12);
+                }
             }
         }
 
-        // Player lives display (shows current HP)
-        g2.setFont(new Font("Arial",Font.BOLD,13));
-        g2.setColor(new Color(120,180,255));
-        g2.drawString("YOUR HP:",24,460);
-        for (int i=0;i<player.lives;i++){
-            g2.setColor(Color.CYAN);
-            g2.fillPolygon(new int[]{90+i*22+7,90+i*22,90+i*22+14},new int[]{460-14,460,460},3);
+        // ── Active upgrades row ───────────────────────────────────────
+        int rowY=cardY+cardH+20;
+        g2.setFont(new Font("Arial",Font.BOLD,11));
+        g2.setColor(new Color(100,90,140));
+        g2.drawString("ACTIVE UPGRADES:", cx0, rowY);
+        int ex=cx0+132;
+        String[] aNames={"AETHER STRIDE","FRENZY CORE","CLOCK FRACTURE","GOLD RUSH","GHOST WALK"};
+        boolean[] aFlags={shopSpeedBoost,shopRapidFire,shopBulletTime,shopScoreRush,shopPhaseShift};
+        int[] aIdx={1,2,3,4,5};
+        boolean any=false;
+        for (int i=0;i<aFlags.length;i++){
+            if (!aFlags[i]) continue;
+            any=true;
+            Color ac2=SHOP_ACCENT[aIdx[i]];
+            g2.setFont(new Font("Arial",Font.BOLD,10));
+            int lw=g2.getFontMetrics().stringWidth(aNames[i]);
+            g2.setColor(new Color(ac2.getRed(),ac2.getGreen(),ac2.getBlue(),160));
+            g2.fillRoundRect(ex-2,rowY-11,lw+10,14,5,5);
+            g2.setColor(new Color(6,4,18));
+            g2.drawString(aNames[i],ex+3,rowY);
+            ex+=lw+16;
+        }
+        if (!any){
+            g2.setFont(new Font("Arial",Font.ITALIC,10));
+            g2.setColor(new Color(60,58,80));
+            g2.drawString("none yet",ex,rowY);
         }
 
-        // Continue button
-        boolean anyItem = true;
-        g2.setColor(new Color(20,25,70));
-        g2.fillRoundRect(btnShopContinue.x,btnShopContinue.y,btnShopContinue.width,btnShopContinue.height,12,12);
-        g2.setColor(new Color(0,200,100));
+        // HP pips
+        g2.setFont(new Font("Arial",Font.BOLD,11));
+        g2.setColor(new Color(120,180,255));
+        g2.drawString("HP:", WIDTH-110, rowY);
+        for (int i=0;i<player.lives;i++){
+            int hx=WIDTH-88+i*20;
+            g2.setColor(i==0?new Color(255,80,80):Color.CYAN);
+            g2.fillPolygon(new int[]{hx+7,hx,hx+14},new int[]{rowY-13,rowY+1,rowY+1},3);
+        }
+
+        // ── Continue button ───────────────────────────────────────────
+        int btnY=rowY+24;
+        Rectangle cont=new Rectangle(WIDTH/2-115,btnY,230,50);
+        g2.setPaint(new GradientPaint(cont.x,cont.y,new Color(28,10,65),
+                cont.x,cont.y+cont.height,new Color(14,5,38)));
+        g2.fillRoundRect(cont.x,cont.y,cont.width,cont.height,12,12);
+        g2.setColor(new Color(155,90,255));
         g2.setStroke(new BasicStroke(2f));
-        g2.drawRoundRect(btnShopContinue.x,btnShopContinue.y,btnShopContinue.width,btnShopContinue.height,12,12);
+        g2.drawRoundRect(cont.x,cont.y,cont.width,cont.height,12,12);
         g2.setStroke(new BasicStroke(1));
         g2.setFont(new Font("Arial",Font.BOLD,18));
         g2.setColor(Color.WHITE);
-        String cont="CONTINUE  →";
-        g2.drawString(cont,btnShopContinue.x+btnShopContinue.width/2-g2.getFontMetrics().stringWidth(cont)/2,btnShopContinue.y+btnShopContinue.height/2+7);
+        String contLbl="ENTER THE FRAY  →";
+        g2.drawString(contLbl,cont.x+cont.width/2-g2.getFontMetrics().stringWidth(contLbl)/2,
+                cont.y+cont.height/2+7);
+        btnShopContinue.setBounds(cont.x,cont.y,cont.width,cont.height);
 
-        // Pickup message
+        // Pickup flash
         if (pickupTimer>0){
             float alpha=Math.min(1f,pickupTimer/30f);
             g2.setFont(new Font("Arial",Font.BOLD,18));
-            FontMetrics fm2=g2.getFontMetrics();
-            int msgX=WIDTH/2-fm2.stringWidth(pickupMsg)/2;
-            g2.setColor(new Color(0,0,0,(int)(alpha*130)));
-            g2.fillRoundRect(msgX-10,557,fm2.stringWidth(pickupMsg)+20,28,8,8);
-            g2.setColor(new Color(100,255,140,(int)(alpha*230)));
-            g2.drawString(pickupMsg,msgX,575);
+            FontMetrics pm=g2.getFontMetrics();
+            int msgX=WIDTH/2-pm.stringWidth(pickupMsg)/2;
+            int msgY=cont.y+cont.height+34;
+            g2.setColor(new Color(0,0,0,(int)(alpha*140)));
+            g2.fillRoundRect(msgX-10,msgY-22,pm.stringWidth(pickupMsg)+20,28,8,8);
+            g2.setColor(new Color(120,255,160,(int)(alpha*230)));
+            g2.drawString(pickupMsg,msgX,msgY);
         }
     }
+
+    /** Unique animated icon for each shop item, centered at (cx,cy). */
+    private void drawShopIcon(Graphics2D g2, int idx, int cx, int cy, float dim, int fc){
+        float pulse=(float)(0.75+0.25*Math.sin(fc*0.10+idx));
+        int a=(int)(215*pulse*dim);
+        Color ac=SHOP_ACCENT[idx];
+        Color c=new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),a);
+        Color cw=new Color(255,255,255,a);
+        g2.setStroke(new BasicStroke(2f));
+        switch(idx){
+            case SHOP_EXTRA_LIFE: { // heart
+                int[] hx={cx,cx-10,cx-12,cx-6,cx,cx+6,cx+12,cx+10};
+                int[] hy={cy+10,cy-2,cy-8,cy-12,cy-8,cy-12,cy-8,cy-2};
+                g2.setColor(c); g2.fillPolygon(hx,hy,8);
+                g2.setColor(cw); g2.drawPolygon(hx,hy,8); break; }
+            case SHOP_SPEED_BOOST: { // lightning bolt
+                int[] lx={cx-3,cx+5,cx-1,cx+7,cx-5,cx+3,cx-1};
+                int[] ly={cy-14,cy-2,cy-2,cy+14,cy+2,cy+2,cy-14};
+                g2.setColor(c); g2.fillPolygon(lx,ly,7);
+                g2.setColor(cw); g2.drawPolygon(lx,ly,7); break; }
+            case SHOP_RAPID_FIRE: { // 3 stacked bullets
+                for(int i=0;i<3;i++){
+                    int bx=cx-16+i*16, by=cy-6;
+                    g2.setColor(c); g2.fillRoundRect(bx,by,8,14,4,4);
+                    g2.setColor(cw); g2.drawRoundRect(bx,by,8,14,4,4);
+                } break; }
+            case SHOP_BULLET_TIME: { // clock face
+                g2.setColor(c); g2.fillOval(cx-13,cy-13,26,26);
+                g2.setColor(cw); g2.drawOval(cx-13,cy-13,26,26);
+                g2.setColor(new Color(6,4,18,a));
+                double ha=Math.toRadians(-90+fc*3);
+                g2.drawLine(cx,cy,cx+(int)(8*Math.cos(ha)),cy+(int)(8*Math.sin(ha)));
+                g2.drawLine(cx,cy,cx+(int)(11*Math.cos(Math.toRadians(-90+fc*8))),
+                        cy+(int)(11*Math.sin(Math.toRadians(-90+fc*8)))); break; }
+            case SHOP_SCORE_RUSH: { // coin stack
+                for(int i=2;i>=0;i--){
+                    int cy2=cy+4-i*5;
+                    g2.setColor(i==0?c:new Color(ac.getRed()/2,ac.getGreen()/2,0,a));
+                    g2.fillOval(cx-11,cy2-4,22,9);
+                    g2.setColor(cw); g2.drawOval(cx-11,cy2-4,22,9);
+                } break; }
+            case SHOP_PHASE_SHIFT: { // ghost
+                int ga=(int)(185*pulse*dim);
+                Color gc=new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),ga);
+                int[] gx={cx-10,cx-10,cx-7,cx-4,cx,cx+4,cx+7,cx+10,cx+10};
+                int[] gy={cy+12,cy-6,cy-12,cy-14,cy-12,cy-14,cy-12,cy-6,cy+12};
+                g2.setColor(gc); g2.fillPolygon(gx,gy,9);
+                g2.setColor(new Color(255,255,255,ga)); g2.drawPolygon(gx,gy,9);
+                g2.setColor(new Color(6,4,18,ga));
+                g2.fillOval(cx-5,cy-6,4,5); g2.fillOval(cx+1,cy-6,4,5); break; }
+            case SHOP_NUKE: { // starburst
+                for(int i=0;i<8;i++){
+                    double ang=i*Math.PI/4+Math.toRadians(fc*2);
+                    g2.setColor(c); g2.setStroke(new BasicStroke(3f));
+                    g2.drawLine(cx+(int)(5*Math.cos(ang)),cy+(int)(5*Math.sin(ang)),
+                                cx+(int)(14*Math.cos(ang)),cy+(int)(14*Math.sin(ang)));
+                }
+                g2.setColor(c); g2.fillOval(cx-6,cy-6,12,12);
+                g2.setColor(cw); g2.setStroke(new BasicStroke(1.5f)); g2.drawOval(cx-6,cy-6,12,12); break; }
+            case SHOP_REPAIR: { // cross / plus
+                g2.setColor(c);
+                g2.fillRect(cx-3,cy-12,6,24); g2.fillRect(cx-12,cy-3,24,6);
+                g2.setColor(cw);
+                g2.drawRect(cx-3,cy-12,6,24); g2.drawRect(cx-12,cy-3,24,6); break; }
+        }
+        g2.setStroke(new BasicStroke(1));
+    }
+
 
     // ═══════════════════════════════════════════════════════════════════
     // ★ 4 NEW SCENES
@@ -2526,34 +2771,49 @@ public class BulletHellGame extends JPanel
     }
 
     private void drawActivePowerupIcons(Graphics2D g2) {
-        int[][] pus = { { PU_DOUBLE_SHOT, doubleShot ? 1 : 0, doubleShotTimer, 480 },
-                { PU_SHIELD, hasShield ? 1 : 0, shieldTimer, 600 } };
         int px = 10, py = 36;
-        for (int[] pu : pus) {
-            if (pu[1] == 0)
-                continue;
-            Color c = puColor(pu[0]);
-            g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 180));
-            g2.fillRoundRect(px, py, 44, 26, 8, 8);
-            float frac = pu[3] > 0 ? (float) pu[2] / pu[3] : 0f;
-            g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 100));
-            g2.fillRoundRect(px, py + 26, (int) (44 * frac), 4, 2, 2);
-            g2.setFont(new Font("Arial", Font.BOLD, 12));
+        // ── Boss drop powerups (timed, show draining bar) ─────────────
+        if (doubleShot)
+            px = drawHudIcon(g2, px, py, "2x",  new Color(255,200,60),  (float)doubleShotTimer/480f, false);
+        if (hasShield)
+            px = drawHudIcon(g2, px, py, "SH",  new Color(80,180,255),  (float)shieldTimer/600f,     false);
+        // ── Shop permanent upgrades (pulsing ★ bar) ────────────────────
+        if (shopSpeedBoost) px = drawHudIcon(g2, px, py, "SPD★", SHOP_ACCENT[1], 1f, true);
+        if (shopRapidFire)  px = drawHudIcon(g2, px, py, "RF★",  SHOP_ACCENT[2], 1f, true);
+        if (shopBulletTime) px = drawHudIcon(g2, px, py, "BT★",  SHOP_ACCENT[3], 1f, true);
+        if (shopScoreRush)  px = drawHudIcon(g2, px, py, "SR★",  SHOP_ACCENT[4], 1f, true);
+        if (shopPhaseShift) px = drawHudIcon(g2, px, py, "PS★",  SHOP_ACCENT[5], 1f, true);
+    }
+
+    private int drawHudIcon(Graphics2D g2, int px, int py,
+                            String label, Color c, float frac, boolean permanent) {
+        g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 170));
+        g2.fillRoundRect(px, py, 46, 26, 8, 8);
+        if (permanent) {
+            float pulse = 0.55f + 0.45f * (float)Math.sin(System.currentTimeMillis() * 0.004);
+            g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), (int)(180 * pulse)));
+            g2.fillRoundRect(px, py + 26, 46, 4, 2, 2);
+            g2.setFont(new Font("Arial", Font.PLAIN, 7));
             g2.setColor(Color.WHITE);
-            FontMetrics fm = g2.getFontMetrics();
-            String lbl = puLabel(pu[0]);
-            g2.drawString(lbl, px + 22 - fm.stringWidth(lbl) / 2, py + 18);
-            px += 50;
+            g2.drawString("∞", px + 19, py + 31);
+        } else {
+            g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 110));
+            g2.fillRoundRect(px, py + 26, (int)(46 * Math.max(0, frac)), 4, 2, 2);
         }
+        g2.setFont(new Font("Arial", Font.BOLD, label.length() > 3 ? 10 : 12));
+        g2.setColor(Color.WHITE);
+        FontMetrics fm = g2.getFontMetrics();
+        g2.drawString(label, px + 23 - fm.stringWidth(label) / 2, py + 18);
+        return px + 52;
     }
 
     private void drawPowerupLegend(Graphics2D g2) {
-        int lx = WIDTH - 134, ly = HEIGHT - 60;
+        int lx = WIDTH - 150, ly = HEIGHT - 48;
         g2.setFont(new Font("Arial", Font.PLAIN, 9));
-        g2.setColor(new Color(80, 80, 130));
-        g2.drawString("POWERUPS:", lx, ly);
-        g2.drawString("2x=Double Shot", lx, ly + 12);
-        g2.drawString("SH=Shield", lx, ly + 24);
+        g2.setColor(new Color(70, 70, 110));
+        g2.drawString("BOSS DROP (timed): SH · 2x", lx, ly);
+        g2.setColor(new Color(90, 160, 120));
+        g2.drawString("SHOP (★ = permanent): SPD RF BT SR PS", lx, ly + 12);
     }
 
     private void drawGameOver(Graphics2D g2) {
@@ -2650,8 +2910,13 @@ public class BulletHellGame extends JPanel
         snakes.clear();
         explosionParticles.clear();
         setScene(SCENE_SPACE);
-        shopSpeedBoost = false; shopSpeedTimer = 0;
-        for (int i=0;i<SHOP_ITEM_COUNT;i++) shopBought[i]=false;
+        shopSpeedBoost = false;
+        shopRapidFire  = false;
+        shopBulletTime = false;
+        shopScoreRush  = false;
+        shopPhaseShift = false;
+        powerUpDropCD  = 0;
+        for (int i=0;i<SHOP_OFFERED;i++) shopBought[i]=false;
         phantomDashCD = 0;
         phantomInvinc = false;
         phantomInvincT = 0;
@@ -2749,7 +3014,7 @@ public class BulletHellGame extends JPanel
             if (btnClassBack.contains(p))
                 gameState = STATE_DIFF_SEL;
         } else if (gameState == STATE_SHOP) {
-            for (int i=0;i<SHOP_ITEM_COUNT;i++) if (btnShopItems[i].contains(p)) { buyShopItem(i); return; }
+            for (int i=0;i<SHOP_OFFERED;i++) if (btnShopItems[i].contains(p)) { buyShopItem(i); return; }
             if (btnShopContinue.contains(p)) leaveShop();
         }
     }
