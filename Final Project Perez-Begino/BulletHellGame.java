@@ -48,7 +48,7 @@ public class BulletHellGame extends JPanel
     static final int NOVA_LASER_FRAMES = 18;
     static final int NOVA_LASER_WIDTH = 18;
     // Phantom
-    static final int PHANTOM_DASH_CD = 90;
+    static final int PHANTOM_DASH_CD = 180;
     static final int PHANTOM_DECOY_LIFE = 120;
     // Sentinel
     static final int SENTINEL_ORB_COUNT = 4;
@@ -134,6 +134,7 @@ public class BulletHellGame extends JPanel
     private double phantomDecoyX = -999, phantomDecoyY = -999;
     private int phantomDecoyT = 0;
     private int phantomAfterX, phantomAfterY, phantomAfterT = 0;
+    private int phantomBurstCount = 0, phantomBurstCD = 0;
 
     // Sentinel
     private double sentinelAngle = 0;
@@ -498,7 +499,7 @@ public class BulletHellGame extends JPanel
         // Nova laser vs boss — guard boss.alive to prevent double-kill
         if (selectedClass == CLASS_NOVA && novaLaserActive && !bossTransition && boss.alive) {
             if (laserHitsBoss(boss.getBounds())) {
-                boss.hp -= 100;
+                boss.hp -= 1;
                 score += 6;
                 if (boss.hp <= 0 && boss.alive) {
                     boss.alive = false; // mark immediately to prevent re-entry
@@ -823,8 +824,7 @@ public class BulletHellGame extends JPanel
                 }
             }
         }
-        int rate = Math.max(1, FIRE_RATE);
-        if (wantsFire && frameCount % rate == 0) {
+        if (phantomBurstCount < 3 && phantomBurstCD == 0 && wantsFire) {
             int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
             double dx = mouseX - pcx, dy = mouseY - pcy, len = Math.sqrt(dx * dx + dy * dy), bs = 13;
             double bvx = 0, bvy = -bs;
@@ -832,14 +832,25 @@ public class BulletHellGame extends JPanel
                 bvx = (dx / len) * bs;
                 bvy = (dy / len) * bs;
             }
-            playerBullets.add(new Bullet(pcx, pcy, bvx, bvy, new Color(180, 0, 255), false));
+            double px = -bvy / bs, py = bvx / bs;
+            playerBullets.add(new KnifeBullet(pcx + px * 10, pcy + py * 10, bvx, bvy, true));
+            playerBullets.add(new KnifeBullet(pcx - px * 10, pcy - py * 10, bvx, bvy, false));
             if (soundCooldown == 0) {
                 playSpacegunSound();
-                soundCooldown = rate;
+                soundCooldown = 6;
             }
             shakeTimer = Math.min(shakeTimer + 2, 5);
             shakeIntensity = 2;
+            phantomBurstCount++;
+            phantomBurstCD = 8; // gap between knives in burst
+            if (phantomBurstCount >= 3) {
+                phantomBurstCD = 45; // 0.75 sec cooldown after full burst
+            }
         }
+        if (phantomBurstCD > 0)
+            phantomBurstCD--;
+        if (phantomBurstCD == 0 && phantomBurstCount >= 3)
+            phantomBurstCount = 0;
     }
 
     // ── Sentinel ──────────────────────────────────────────────────────
@@ -2837,6 +2848,77 @@ public class BulletHellGame extends JPanel
             g2.fillOval((int) x - size, (int) y - size, size * 2, size * 2);
             g2.setColor(color);
             g2.fillOval((int) x - size / 2, (int) y - size / 2, size, size);
+        }
+    }
+
+    class KnifeBullet extends Bullet {
+        boolean leftSide;
+        int spawnAnim = 12; // spawn animation frames
+        final java.util.Deque<double[]> trail = new java.util.ArrayDeque<>();
+
+        KnifeBullet(double x, double y, double vx, double vy, boolean leftSide) {
+            super(x, y, vx, vy, new Color(180, 0, 255), false);
+            this.leftSide = leftSide;
+            this.size = 7;
+        }
+
+        @Override
+        void update() {
+            trail.addFirst(new double[] { x, y });
+            if (trail.size() > 10)
+                trail.removeLast();
+            super.update();
+            if (spawnAnim > 0)
+                spawnAnim--;
+        }
+
+        @Override
+        void draw(Graphics2D g2) {
+            double dx = this.dx, dy = this.dy;
+            double len = Math.sqrt(dx * dx + dy * dy);
+            if (len < 0.001)
+                return;
+            double nx = dx / len, ny = dy / len;
+            double angle = Math.atan2(dy, dx);
+
+            // spawn animation: knives slide outward from center
+            if (spawnAnim > 0) {
+                float sf = spawnAnim / 12f;
+                double perpX = -ny * (leftSide ? 1 : -1) * 18 * sf;
+                double perpY = nx * (leftSide ? 1 : -1) * 18 * sf;
+                // draw spawn flash
+                g2.setColor(new Color(200, 0, 255, (int) (180 * sf)));
+                g2.fillOval((int) (x + perpX) - 5, (int) (y + perpY) - 5, 10, 10);
+            }
+
+            // dark trail
+            int ti = 0;
+            for (double[] tp : trail) {
+                float ta = (float) (trail.size() - ti) / trail.size();
+                int alpha = (int) (120 * ta * ta);
+                g2.setColor(new Color(80, 0, 120, alpha));
+                int tsz = Math.max(1, (int) (5 * ta));
+                g2.fillOval((int) tp[0] - tsz / 2, (int) tp[1] - tsz / 2, tsz, tsz);
+                ti++;
+            }
+
+            // knife blade: rotated rectangle
+            Graphics2D g3 = (Graphics2D) g2.create();
+            g3.translate((int) x, (int) y);
+            g3.rotate(angle + Math.PI / 2);
+            // glow
+            g3.setColor(new Color(140, 0, 200, 80));
+            g3.fillRoundRect(-5, -12, 10, 24, 3, 3);
+            // blade
+            g3.setColor(new Color(200, 180, 255));
+            g3.fillRoundRect(-2, -11, 4, 18, 2, 2);
+            // edge highlight
+            g3.setColor(new Color(255, 255, 255, 180));
+            g3.fillRect(-1, -11, 1, 16);
+            // handle
+            g3.setColor(new Color(60, 0, 80));
+            g3.fillRoundRect(-3, 6, 6, 5, 2, 2);
+            g3.dispose();
         }
     }
 
