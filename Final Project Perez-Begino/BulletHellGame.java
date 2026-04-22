@@ -20,6 +20,7 @@ public class BulletHellGame extends JPanel
     static final int STATE_CLASS_SEL = 5;
     static final int STATE_PLAYING = 3;
     static final int STATE_GAME_OVER = 4;
+    static final int STATE_SHOP      = 7;
 
     static final int FIRE_MOUSE = 0;
     static final int FIRE_SPACE = 1;
@@ -66,8 +67,32 @@ public class BulletHellGame extends JPanel
     static final int SCENE_ALIEN = 3;
     static final int SCENE_ASTEROID = 4;
     static final int SCENE_NEBULA = 5;
-    static final int SCENE_COUNT = 6;
+    static final int SCENE_VOID   = 6;
+    static final int SCENE_STORM  = 7;
+    static final int SCENE_ICE    = 8;
+    static final int SCENE_JUNGLE = 9;
+    static final int SCENE_COUNT  = 10;
     private int currentScene = SCENE_SPACE;
+
+    // ── Shop ─────────────────────────────────────────────────────────
+    static final int SHOP_EXTRA_LIFE  = 0;
+    static final int SHOP_SHIELD      = 1;
+    static final int SHOP_DOUBLE_SHOT = 2;
+    static final int SHOP_SPEED_BOOST = 3;
+    static final int SHOP_NUKE        = 4;
+    static final int SHOP_REPAIR      = 5;
+    static final int SHOP_ITEM_COUNT  = 6;
+    static final String[] SHOP_NAMES = {"EXTRA LIFE","SHIELD","DOUBLE SHOT","SPEED BOOST","NUKE ALL","REPAIR HP"};
+    static final String[] SHOP_DESCS = {"Gain +1 life","Block 1 hit","2x bullets 15s","Move faster 15s","Clear all bullets","Restore 1 life"};
+    static final int[]    SHOP_COSTS = {600, 300, 250, 200, 400, 500};
+    private final Rectangle[] btnShopItems = {
+        new Rectangle(20, 200, 172, 110), new Rectangle(214,200,172,110), new Rectangle(408,200,172,110),
+        new Rectangle(20, 330, 172, 110), new Rectangle(214,330,172,110), new Rectangle(408,330,172,110),
+    };
+    private final boolean[] shopBought = new boolean[SHOP_ITEM_COUNT];
+    private final Rectangle btnShopContinue = new Rectangle(WIDTH/2-110,490,220,54);
+    private boolean shopSpeedBoost = false;
+    private int     shopSpeedTimer = 0;
     private int sceneTransAlpha = 0;
     private final int[] s1x = new int[60], s1y = new int[60], s1b = new int[60];
     private final int[] s2x = new int[35], s2y = new int[35], s2b = new int[35];
@@ -428,7 +453,8 @@ public class BulletHellGame extends JPanel
 
         boolean wantsFire = (fireMode == FIRE_SPACE && keys[KeyEvent.VK_SPACE])
                 || (fireMode == FIRE_MOUSE && mouseFireHeld);
-        int baseSpd = player.speed;
+        if (shopSpeedBoost && --shopSpeedTimer <= 0) shopSpeedBoost = false;
+        int baseSpd = player.speed + (shopSpeedBoost ? 2 : 0);
         int spd = baseSpd;
 
         switch (selectedClass) {
@@ -711,23 +737,45 @@ public class BulletHellGame extends JPanel
     // ── FIX: bossDefeated now safe against double-call ────────────────
     private void bossDefeated() {
         // boss.alive is already set to false by the caller before invoking this
-        score += 500;
+        score += 500 + wave * 50;
         wave++;
         bossTransition = true;
-        viperHitCount = 0;
-        viperPoisonStacks = 0;
-        viperPoisonTimer = 0;
-        viperPoisonTickTimer = 0;
+        viperHitCount = 0; viperPoisonStacks = 0; viperPoisonTimer = 0; viperPoisonTickTimer = 0;
         novaLaserActive = false;
-        playerBullets.clear();
-        enemyBullets.clear();
+        playerBullets.clear(); enemyBullets.clear();
+        Timer shopDelay = new Timer(1500, ev -> openShop());
+        shopDelay.setRepeats(false); shopDelay.start();
+    }
+
+    private void openShop() {
+        for (int i = 0; i < SHOP_ITEM_COUNT; i++) shopBought[i] = false;
+        gameState = STATE_SHOP;
+    }
+
+    private void buyShopItem(int idx) {
+        if (shopBought[idx] || score < SHOP_COSTS[idx]) return;
+        score -= SHOP_COSTS[idx];
+        shopBought[idx] = true;
+        switch (idx) {
+            case SHOP_EXTRA_LIFE:  player.lives++; pickupMsg = "EXTRA LIFE!"; break;
+            case SHOP_SHIELD:      hasShield = true; shieldTimer = 9999; pickupMsg = "SHIELD UP!"; break;
+            case SHOP_DOUBLE_SHOT: doubleShot = true; doubleShotTimer = 900; pickupMsg = "DOUBLE SHOT!"; break;
+            case SHOP_SPEED_BOOST: shopSpeedBoost = true; shopSpeedTimer = 900; pickupMsg = "SPEED BOOST!"; break;
+            case SHOP_NUKE:        enemyBullets.clear(); score += 80; pickupMsg = "NUKE!"; shakeTimer = 16; shakeIntensity = 5; break;
+            case SHOP_REPAIR:
+                int maxLives = new int[]{5,3,2}[difficulty];
+                if (player.lives < maxLives) { player.lives++; pickupMsg = "REPAIRED!"; }
+                else { score += SHOP_COSTS[idx]; shopBought[idx] = false; pickupMsg = "Already full HP!"; }
+                break;
+        }
+        pickupTimer = 90;
+    }
+
+    private void leaveShop() {
         setScene((wave - 1) % SCENE_COUNT);
-        Timer t = new Timer(1800, ev -> {
-            boss = new Boss(WIDTH / 2 - 40, 60, wave);
-            bossTransition = false;
-        });
-        t.setRepeats(false);
-        t.start();
+        boss = new Boss(WIDTH / 2 - 40, 60, wave);
+        bossTransition = false;
+        gameState = STATE_PLAYING;
     }
 
     // ── Machine Gunner ────────────────────────────────────────────────
@@ -1241,6 +1289,9 @@ public class BulletHellGame extends JPanel
             case STATE_PLAYING:
                 drawGame(g2);
                 break;
+            case STATE_SHOP:
+                drawShop(g2);
+                break;
             case STATE_GAME_OVER:
                 drawGame(g2);
                 drawGameOver(g2);
@@ -1269,6 +1320,18 @@ public class BulletHellGame extends JPanel
                     break;
                 case SCENE_NEBULA:
                     drawSceneNebula(g2);
+                    break;
+                case SCENE_VOID:
+                    drawSceneVoid(g2);
+                    break;
+                case SCENE_STORM:
+                    drawSceneStorm(g2);
+                    break;
+                case SCENE_ICE:
+                    drawSceneIce(g2);
+                    break;
+                case SCENE_JUNGLE:
+                    drawSceneJungle(g2);
                     break;
             }
             if (sceneTransAlpha > 0) {
@@ -1590,6 +1653,403 @@ public class BulletHellGame extends JPanel
             }
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ★ SHOP SCREEN
+    // ═══════════════════════════════════════════════════════════════════
+    private void drawShop(Graphics2D g2) {
+        // Dark space background with stars
+        g2.setColor(new Color(6,6,22)); g2.fillRect(0,0,WIDTH,HEIGHT);
+        for (int i=0;i<starX.length;i++){
+            float f=(float)(0.4+0.3*Math.sin(frameCount*0.03+i));
+            int br=(int)(80+80*f);
+            g2.setColor(new Color(br,br,Math.min(255,br+20)));
+            g2.fillRect(starX[i],starY[i],starSz[i],starSz[i]);
+        }
+        // Header panel
+        g2.setColor(new Color(0,0,0,160)); g2.fillRect(0,0,WIDTH,170);
+        // Title
+        g2.setFont(new Font("Arial",Font.BOLD,42));
+        g2.setColor(new Color(255,200,0));
+        String title="WAVE "+(wave-1)+" CLEAR!";
+        g2.drawString(title,WIDTH/2-g2.getFontMetrics().stringWidth(title)/2,52);
+        // Subtitle
+        g2.setFont(new Font("Arial",Font.BOLD,20));
+        g2.setColor(Color.WHITE);
+        String sub="UPGRADE SHOP";
+        g2.drawString(sub,WIDTH/2-g2.getFontMetrics().stringWidth(sub)/2,88);
+        // Score display
+        g2.setFont(new Font("Courier New",Font.BOLD,18));
+        g2.setColor(new Color(255,220,80));
+        String sc="SCORE: "+score;
+        g2.drawString(sc,WIDTH/2-g2.getFontMetrics().stringWidth(sc)/2,120);
+        // Hint
+        g2.setFont(new Font("Arial",Font.ITALIC,13));
+        g2.setColor(new Color(140,140,200));
+        String hint="Click an item to buy  ·  ENTER or Continue to play";
+        g2.drawString(hint,WIDTH/2-g2.getFontMetrics().stringWidth(hint)/2,148);
+
+        // Draw 6 shop item cards (2 rows of 3)
+        Color[] accentCols={
+            new Color(60,220,80),   // extra life  - green
+            new Color(80,150,255),  // shield      - blue
+            new Color(0,220,255),   // double shot - cyan
+            new Color(255,200,0),   // speed       - yellow
+            new Color(255,60,60),   // nuke        - red
+            new Color(200,80,255),  // repair      - purple
+        };
+        for (int i=0;i<SHOP_ITEM_COUNT;i++){
+            Rectangle r=btnShopItems[i];
+            Color ac=accentCols[i];
+            boolean bought=shopBought[i];
+            boolean canAfford=score>=SHOP_COSTS[i];
+            // Card background
+            g2.setColor(bought?new Color(10,30,10,220):new Color(10,10,28,230));
+            g2.fillRoundRect(r.x,r.y,r.width,r.height,14,14);
+            // Border — bright if affordable, dim if not
+            g2.setColor(bought?new Color(60,200,60):canAfford?ac:new Color(60,60,80));
+            g2.setStroke(new BasicStroke(bought?2.5f:1.5f));
+            g2.drawRoundRect(r.x,r.y,r.width,r.height,14,14);
+            g2.setStroke(new BasicStroke(1));
+            // Accent glow behind card
+            if (canAfford&&!bought){
+                float pulse=(float)(0.3+0.2*Math.sin(frameCount*0.09+i));
+                g2.setColor(new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),(int)(18*pulse)));
+                g2.fillRoundRect(r.x-3,r.y-3,r.width+6,r.height+6,16,16);
+            }
+            if (bought){
+                // SOLD banner
+                g2.setColor(new Color(60,200,60));
+                g2.fillRoundRect(r.x+r.width/2-28,r.y+8,56,20,8,8);
+                g2.setFont(new Font("Arial",Font.BOLD,11));
+                g2.setColor(new Color(6,6,22));
+                g2.drawString("BOUGHT",r.x+r.width/2-22,r.y+22);
+            }
+            // Item name
+            g2.setFont(new Font("Arial",Font.BOLD,14));
+            g2.setColor(bought?new Color(80,200,80):canAfford?Color.WHITE:new Color(100,100,130));
+            FontMetrics fm=g2.getFontMetrics();
+            String name=SHOP_NAMES[i];
+            g2.drawString(name,r.x+r.width/2-fm.stringWidth(name)/2,r.y+48);
+            // Description
+            g2.setFont(new Font("Arial",Font.ITALIC,11));
+            g2.setColor(bought?new Color(60,160,60):canAfford?new Color(180,200,255):new Color(80,80,110));
+            fm=g2.getFontMetrics();
+            String desc=SHOP_DESCS[i];
+            g2.drawString(desc,r.x+r.width/2-fm.stringWidth(desc)/2,r.y+66);
+            // Cost
+            g2.setFont(new Font("Courier New",Font.BOLD,15));
+            g2.setColor(bought?new Color(60,160,60):canAfford?new Color(255,220,80):new Color(180,60,60));
+            String cost=bought?"---":"$"+SHOP_COSTS[i];
+            fm=g2.getFontMetrics();
+            g2.drawString(cost,r.x+r.width/2-fm.stringWidth(cost)/2,r.y+90);
+            // Can't afford label
+            if (!bought&&!canAfford){
+                g2.setFont(new Font("Arial",Font.PLAIN,9));
+                g2.setColor(new Color(180,60,60));
+                String poor="Need $"+(SHOP_COSTS[i]-score)+" more";
+                fm=g2.getFontMetrics();
+                g2.drawString(poor,r.x+r.width/2-fm.stringWidth(poor)/2,r.y+104);
+            }
+        }
+
+        // Player lives display (shows current HP)
+        g2.setFont(new Font("Arial",Font.BOLD,13));
+        g2.setColor(new Color(120,180,255));
+        g2.drawString("YOUR HP:",24,460);
+        for (int i=0;i<player.lives;i++){
+            g2.setColor(Color.CYAN);
+            g2.fillPolygon(new int[]{90+i*22+7,90+i*22,90+i*22+14},new int[]{460-14,460,460},3);
+        }
+
+        // Continue button
+        boolean anyItem = true;
+        g2.setColor(new Color(20,25,70));
+        g2.fillRoundRect(btnShopContinue.x,btnShopContinue.y,btnShopContinue.width,btnShopContinue.height,12,12);
+        g2.setColor(new Color(0,200,100));
+        g2.setStroke(new BasicStroke(2f));
+        g2.drawRoundRect(btnShopContinue.x,btnShopContinue.y,btnShopContinue.width,btnShopContinue.height,12,12);
+        g2.setStroke(new BasicStroke(1));
+        g2.setFont(new Font("Arial",Font.BOLD,18));
+        g2.setColor(Color.WHITE);
+        String cont="CONTINUE  →";
+        g2.drawString(cont,btnShopContinue.x+btnShopContinue.width/2-g2.getFontMetrics().stringWidth(cont)/2,btnShopContinue.y+btnShopContinue.height/2+7);
+
+        // Pickup message
+        if (pickupTimer>0){
+            float alpha=Math.min(1f,pickupTimer/30f);
+            g2.setFont(new Font("Arial",Font.BOLD,18));
+            FontMetrics fm2=g2.getFontMetrics();
+            int msgX=WIDTH/2-fm2.stringWidth(pickupMsg)/2;
+            g2.setColor(new Color(0,0,0,(int)(alpha*130)));
+            g2.fillRoundRect(msgX-10,557,fm2.stringWidth(pickupMsg)+20,28,8,8);
+            g2.setColor(new Color(100,255,140,(int)(alpha*230)));
+            g2.drawString(pickupMsg,msgX,575);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ★ 4 NEW SCENES
+    // ═══════════════════════════════════════════════════════════════════
+
+    // SCENE 6: VOID — deep wormhole / interdimensional rift
+    private void drawSceneVoid(Graphics2D g2){
+        drawSkyGradient(g2,new Color(0,0,2),new Color(4,0,12));
+        // Wormhole spiral rings
+        int cx=WIDTH/2, cy=HEIGHT/2;
+        for(int r=200;r>10;r-=18){
+            float t=(float)(frameCount*0.012+r*0.04);
+            int alpha=Math.max(0,Math.min(80,(200-r)/2));
+            float hue=(r+frameCount*0.5f)/300f%1f;
+            int rc=(int)(Math.sin(hue*Math.PI*2)*80+80);
+            int gc=(int)(Math.sin(hue*Math.PI*2+2.1)*80+80);
+            int bc=(int)(Math.sin(hue*Math.PI*2+4.2)*80+80);
+            g2.setColor(new Color(rc,gc,bc,alpha));
+            g2.setStroke(new BasicStroke(2.2f));
+            int ox=(int)(Math.cos(t)*r*0.03), oy=(int)(Math.sin(t)*r*0.03);
+            g2.drawOval(cx-r+ox,cy-r+oy,r*2,r*2);
+        }
+        g2.setStroke(new BasicStroke(1));
+        // Central void eye
+        g2.setColor(new Color(0,0,0,200)); g2.fillOval(cx-12,cy-12,24,24);
+        g2.setColor(new Color(120,0,200,180)); g2.setStroke(new BasicStroke(1.5f));
+        g2.drawOval(cx-12,cy-12,24,24); g2.setStroke(new BasicStroke(1));
+        // Stars being distorted toward centre
+        rand.setSeed(12345);
+        for(int i=0;i<80;i++){
+            int sx2=rand.nextInt(WIDTH), sy2=rand.nextInt(HEIGHT);
+            double dx=cx-sx2, dy2=cy-sy2;
+            double dist=Math.sqrt(dx*dx+dy2*dy2);
+            double pull=Math.max(0,1-dist/300)*Math.sin(frameCount*0.04+i)*3;
+            int fx=(int)(sx2+dx/dist*pull), fy=(int)(sy2+dy2/dist*pull);
+            int br2=60+rand.nextInt(80);
+            g2.setColor(new Color(br2,br2,Math.min(255,br2+40),br2));
+            g2.fillRect(fx,fy,1,1);
+        }
+        // Streaks radiating outward (like motion blur of falling in)
+        rand.setSeed(frameCount/4L*4+99);
+        for(int i=0;i<20;i++){
+            double ang=rand.nextDouble()*Math.PI*2;
+            double len=40+rand.nextDouble()*120;
+            int r2=80+rand.nextInt(150);
+            int x1=(int)(cx+Math.cos(ang)*r2), y1=(int)(cy+Math.sin(ang)*r2);
+            int x2=(int)(cx+Math.cos(ang)*(r2+len)), y2=(int)(cy+Math.sin(ang)*(r2+len));
+            int alpha2=rand.nextInt(40)+10;
+            float hue2=(float)(ang/(Math.PI*2));
+            g2.setColor(new Color((int)(Math.abs(Math.sin(hue2*3))*120+80),(int)(Math.abs(Math.sin(hue2*3+2))*80+30),(int)(Math.abs(Math.sin(hue2*3+4))*120+80),alpha2));
+            g2.setStroke(new BasicStroke(0.8f)); g2.drawLine(x1,y1,x2,y2); g2.setStroke(new BasicStroke(1));
+        }
+        // Purple/violet nebula wisps
+        for(int i=0;i<5;i++){
+            int nx=(int)((i*160+frameCount*0.2)%(WIDTH+300))-150;
+            int ny=80+i*120;
+            g2.setColor(new Color(80,0,140,10));
+            g2.fillOval(nx,ny,300,80);
+        }
+    }
+
+    // SCENE 7: SOLAR STORM — inside the sun's corona, plasma eruptions
+    private void drawSceneStorm(Graphics2D g2){
+        drawSkyGradient(g2,new Color(20,4,0),new Color(60,18,0));
+        // Plasma wave sweeps
+        for(int i=0;i<6;i++){
+            double t=(double)(frameCount*0.008+i*0.9);
+            int wx=(int)((Math.sin(t)*0.5+0.5)*(WIDTH+200))-100;
+            int wy=(int)(i*130+Math.cos(t*1.3)*40);
+            int alpha=12+i*3;
+            g2.setColor(new Color(255,100+i*15,0,alpha));
+            g2.fillOval(wx-150,wy-40,400,100);
+        }
+        // Solar filaments (dark arching loops)
+        g2.setColor(new Color(150,40,0,120));
+        g2.setStroke(new BasicStroke(3f));
+        for(int i=0;i<4;i++){
+            int bx=(int)((i*180+frameCount*0.3)%(WIDTH+200))-100;
+            g2.drawArc(bx,HEIGHT/2-80+i*30,160,120,0,180);
+        }
+        g2.setStroke(new BasicStroke(1));
+        // Bright plasma dots / flares
+        rand.setSeed(frameCount/3L*3);
+        for(int i=0;i<30;i++){
+            int fx=rand.nextInt(WIDTH), fy=rand.nextInt(HEIGHT);
+            int fs=1+rand.nextInt(4);
+            int falpha=40+rand.nextInt(80);
+            g2.setColor(new Color(255,200+rand.nextInt(55),50,falpha));
+            g2.fillOval(fx,fy,fs,fs);
+        }
+        // Solar prominence eruptions
+        for(int i=0;i<3;i++){
+            int phase=(frameCount+i*120)%360;
+            if(phase<120){
+                float pf=(float)phase/120;
+                int px2=(int)((i+1)*WIDTH/4);
+                int ph=(int)(pf*200);
+                // Eruption column
+                g2.setColor(new Color(255,(int)(120+60*pf),0,(int)(80*(1-pf))));
+                g2.fillOval(px2-20,HEIGHT-ph-40,40,(int)(ph*0.6));
+                // Tip glow
+                g2.setColor(new Color(255,240,100,(int)(120*(1-pf))));
+                g2.fillOval(px2-12,HEIGHT-ph-52,24,24);
+            }
+        }
+        // Ground: molten surface
+        g2.setColor(new Color(80,20,0,255)); g2.fillRect(0,HEIGHT-40,WIDTH,40);
+        // Lava ripples
+        for(int i=0;i<WIDTH;i+=20){
+            int lh=(int)(6+4*Math.sin((i+frameCount*2)*0.08));
+            g2.setColor(new Color(255,80,0,180));
+            g2.fillOval(i,HEIGHT-40,18,lh*2);
+        }
+        // Scattered dim stars barely visible
+        drawStars(g2,80,-20,-60,false);
+    }
+
+    // SCENE 8: ICE PLANET — frozen tundra, aurora, frozen structures
+    private void drawSceneIce(Graphics2D g2){
+        drawSkyGradient(g2,new Color(0,4,18),new Color(5,18,35));
+        // Aurora borealis bands
+        int[][] auroraCols={{0,200,120},{0,150,255},{80,0,200},{0,220,180}};
+        for(int band=0;band<4;band++){
+            int[] ac=auroraCols[band];
+            for(int x2=0;x2<WIDTH;x2+=2){
+                double t=(double)(frameCount*0.02+x2*0.015+band*1.2);
+                int ay=(int)(80+band*55+Math.sin(t)*30+Math.cos(t*0.7)*15);
+                int ah=(int)(20+Math.sin(t*0.5+1)*15);
+                int alpha=(int)(20+12*Math.sin(frameCount*0.04+x2*0.02+band));
+                g2.setColor(new Color(ac[0],ac[1],ac[2],Math.max(0,alpha)));
+                g2.fillRect(x2,ay,2,ah);
+            }
+        }
+        // Stars — blue-white tinted cold stars
+        drawStars(g2,-20,0,60,true);
+        // Distant frozen mountains
+        g2.setColor(new Color(30,45,80,200));
+        int[] iceMx={-10,30,80,130,180,220,270,310,360,400,450,500,550,WIDTH+10};
+        int[] iceMy={HEIGHT,HEIGHT-70,HEIGHT-120,HEIGHT-80,HEIGHT-150,HEIGHT-90,HEIGHT-130,HEIGHT-70,HEIGHT-110,HEIGHT-85,HEIGHT-140,HEIGHT-75,HEIGHT-95,HEIGHT};
+        g2.fillPolygon(iceMx,iceMy,iceMx.length);
+        // Snow highlights on peaks
+        g2.setColor(new Color(200,220,255,180));
+        for(int i=1;i<iceMx.length-2;i+=2){
+            if(iceMy[i]<HEIGHT-100){
+                g2.fillPolygon(
+                    new int[]{iceMx[i]-12,iceMx[i],iceMx[i]+12},
+                    new int[]{iceMy[i]+20,iceMy[i],iceMy[i]+20},3);
+            }
+        }
+        // Ice crystal spires in foreground
+        for(int i=0;i<10;i++){
+            int sx2=i*62+10, sh=40+i%3*30;
+            g2.setColor(new Color(140,200,255,180));
+            g2.fillPolygon(new int[]{sx2,sx2+10,sx2+20},new int[]{HEIGHT-sh,HEIGHT,HEIGHT},3);
+            // Refraction shimmer
+            float shimmer=(float)(0.5+0.5*Math.sin(frameCount*0.07+i*0.8));
+            g2.setColor(new Color(200,240,255,(int)(60*shimmer)));
+            g2.fillPolygon(new int[]{sx2+2,sx2+8,sx2+14},new int[]{HEIGHT-sh+4,HEIGHT,HEIGHT},3);
+        }
+        // Frozen ground
+        g2.setColor(new Color(120,170,220,255)); g2.fillRect(0,HEIGHT-28,WIDTH,28);
+        // Ice cracks
+        g2.setColor(new Color(180,220,255,160)); g2.setStroke(new BasicStroke(0.8f));
+        rand.setSeed(33333);
+        for(int i=0;i<15;i++){
+            int cx2=rand.nextInt(WIDTH), cy2=HEIGHT-rand.nextInt(20);
+            int cx3=cx2+rand.nextInt(50)-25, cy3=cy2+rand.nextInt(12);
+            g2.drawLine(cx2,cy2,cx3,cy3);
+        }
+        g2.setStroke(new BasicStroke(1));
+        // Snowflakes drifting
+        rand.setSeed(frameCount/6L*6+11);
+        for(int i=0;i<35;i++){
+            int sx2=rand.nextInt(WIDTH);
+            int sy2=(rand.nextInt(HEIGHT)+frameCount*(1+rand.nextInt(2))/2)%HEIGHT;
+            g2.setColor(new Color(200,230,255,100+rand.nextInt(80)));
+            g2.fillOval(sx2,sy2,2+rand.nextInt(3),2+rand.nextInt(3));
+        }
+    }
+
+    // SCENE 9: ALIEN JUNGLE PLANET — dense bioluminescent overgrowth
+    private void drawSceneJungle(Graphics2D g2){
+        drawSkyGradient(g2,new Color(2,10,8),new Color(8,25,14));
+        // Alien moon — large reddish
+        g2.setColor(new Color(200,100,60,200));
+        g2.fillOval(WIDTH-130,15,80,80);
+        g2.setColor(new Color(160,70,40,100));
+        g2.fillOval(WIDTH-120,25,30,25);
+        g2.setColor(new Color(0,0,0,80));
+        g2.fillOval(WIDTH-115,15,70,80);
+        // Dim stars through thick atmosphere
+        drawStars(g2,-40,20,0,false);
+        // Far jungle canopy silhouette (deep layer)
+        g2.setColor(new Color(5,22,10,220));
+        int[] farJx=new int[WIDTH/6+2], farJy=new int[WIDTH/6+2];
+        farJx[0]=0; farJy[0]=HEIGHT;
+        for(int i=1;i<WIDTH/6+1;i++){
+            farJx[i]=i*6;
+            farJy[i]=HEIGHT-80-(int)(35*Math.sin(i*0.4+wave))-((i*17)%40);
+        }
+        farJx[WIDTH/6+1]=WIDTH; farJy[WIDTH/6+1]=HEIGHT;
+        g2.fillPolygon(farJx,farJy,farJx.length);
+        // Mid jungle canopy — alien colours
+        g2.setColor(new Color(10,40,18,230));
+        int[] midJx=new int[WIDTH/4+2], midJy=new int[WIDTH/4+2];
+        midJx[0]=0; midJy[0]=HEIGHT;
+        for(int i=1;i<WIDTH/4+1;i++){
+            midJx[i]=i*4;
+            midJy[i]=HEIGHT-120-(int)(50*Math.sin(i*0.3+wave*0.5))-((i*23)%60);
+        }
+        midJx[WIDTH/4+1]=WIDTH; midJy[WIDTH/4+1]=HEIGHT;
+        g2.fillPolygon(midJx,midJy,midJx.length);
+        // Bioluminescent tree trunks
+        for(int i=0;i<8;i++){
+            int tx2=i*80+20;
+            int th=200+((i*37)%100);
+            int tw=12+i%3*4;
+            // Dark trunk
+            g2.setColor(new Color(5,25,12,220));
+            g2.fillRect(tx2,HEIGHT-th,tw,th);
+            // Glowing bark veins
+            float vg=(float)(0.4+0.6*Math.sin(frameCount*0.05+i*0.9));
+            g2.setColor(new Color(0,180,80,(int)(60*vg)));
+            g2.fillRect(tx2+tw/3,HEIGHT-th+20,2,th-20);
+            // Canopy blob
+            g2.setColor(new Color(8,50,20,220));
+            g2.fillOval(tx2-30,HEIGHT-th-30,tw+60,50);
+            g2.setColor(new Color(15,70,30,180));
+            g2.fillOval(tx2-20,HEIGHT-th-50,tw+40,40);
+            // Glowing canopy tips
+            g2.setColor(new Color(0,255,100,(int)(100*vg)));
+            g2.fillOval(tx2-10,HEIGHT-th-60,tw+20,25);
+            g2.setColor(new Color(0,255,100,(int)(25*vg)));
+            g2.fillOval(tx2-20,HEIGHT-th-65,tw+40,35);
+        }
+        // Floating spores drifting upward
+        rand.setSeed(frameCount/5L*5+44);
+        for(int i=0;i<25;i++){
+            int sx2=rand.nextInt(WIDTH);
+            int sy2=(HEIGHT+100-((rand.nextInt(HEIGHT)+frameCount*(1+rand.nextInt(2)))%(HEIGHT+100)));
+            float sf=(float)(0.5+0.5*Math.sin(frameCount*0.06+i));
+            g2.setColor(new Color(0,255,120,(int)(60*sf)));
+            g2.fillOval(sx2,sy2,3,3);
+        }
+        // Foreground thick roots/vines
+        g2.setColor(new Color(8,30,15,240));
+        g2.fillRect(0,HEIGHT-55,WIDTH,55);
+        // Glowing ground mushrooms
+        for(int i=0;i<12;i++){
+            int mx=i*50+10;
+            float mg=(float)(0.4+0.6*Math.sin(frameCount*0.06+i*1.2));
+            // Cap
+            g2.setColor(new Color(0,200,80,(int)(120*mg)));
+            g2.fillOval(mx-10,HEIGHT-62,22,14);
+            // Stalk
+            g2.setColor(new Color(0,140,50,180));
+            g2.fillRect(mx-2,HEIGHT-52,5,12);
+            // Glow
+            g2.setColor(new Color(0,255,100,(int)(20*mg)));
+            g2.fillOval(mx-18,HEIGHT-68,38,28);
+        }
+    }
+
 
     // ── Menu ──────────────────────────────────────────────────────────
     private void drawMenu(Graphics2D g2) {
@@ -2190,6 +2650,8 @@ public class BulletHellGame extends JPanel
         snakes.clear();
         explosionParticles.clear();
         setScene(SCENE_SPACE);
+        shopSpeedBoost = false; shopSpeedTimer = 0;
+        for (int i=0;i<SHOP_ITEM_COUNT;i++) shopBought[i]=false;
         phantomDashCD = 0;
         phantomInvinc = false;
         phantomInvincT = 0;
@@ -2223,6 +2685,8 @@ public class BulletHellGame extends JPanel
             gameState = STATE_MENU;
         if (gameState == STATE_CLASS_SEL && e.getKeyCode() == KeyEvent.VK_ENTER)
             startGame();
+        if (gameState == STATE_SHOP && e.getKeyCode() == KeyEvent.VK_ENTER)
+            leaveShop();
     }
 
     @Override
@@ -2284,6 +2748,9 @@ public class BulletHellGame extends JPanel
             }
             if (btnClassBack.contains(p))
                 gameState = STATE_DIFF_SEL;
+        } else if (gameState == STATE_SHOP) {
+            for (int i=0;i<SHOP_ITEM_COUNT;i++) if (btnShopItems[i].contains(p)) { buyShopItem(i); return; }
+            if (btnShopContinue.contains(p)) leaveShop();
         }
     }
 
