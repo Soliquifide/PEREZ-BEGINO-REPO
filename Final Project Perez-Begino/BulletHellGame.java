@@ -71,7 +71,9 @@ public class BulletHellGame extends JPanel
     static final int SCENE_STORM = 7;
     static final int SCENE_ICE = 8;
     static final int SCENE_JUNGLE = 9;
-    static final int SCENE_COUNT = 10;
+    static final int SCENE_JAPAN = 10;
+    static final int SCENE_KITSUNE = 11;
+    static final int SCENE_COUNT = 12;
     private int currentScene = SCENE_SPACE;
 
     // ── Shop ─────────────────────────────────────────────────────────
@@ -711,7 +713,7 @@ public class BulletHellGame extends JPanel
                 continue;
             }
             if (!bossTransition && boss.alive && boss.getBounds().intersects(s.getBounds())) {
-                boss.hp -= 2;
+                boss.hp -= 200;
                 score += (shopScoreRush ? 30 : 15);
                 s.dead = true;
                 damageIndicators.add(new DamageIndicator(
@@ -886,7 +888,15 @@ public class BulletHellGame extends JPanel
     }
 
     private void leaveShop() {
-        setScene((wave - 1) % SCENE_COUNT);
+        int sceneIndex;
+        if (wave >= 6 && wave <= 9) {
+            sceneIndex = SCENE_JAPAN;
+        } else if (wave == 10) {
+            sceneIndex = SCENE_KITSUNE;
+        } else {
+            sceneIndex = (wave - 1) % SCENE_COUNT;
+        }
+        setScene(sceneIndex);
         boss = new Boss(WIDTH / 2 - 40, 60, wave);
         bossTransition = false;
         gameState = STATE_PLAYING;
@@ -1205,8 +1215,8 @@ public class BulletHellGame extends JPanel
                 }
             }
         }
-        // Wave 9-10: flower pattern (3 rings at staggered intervals) + aimed
-        else if (wave <= 10) {
+        // Wave 9: flower pattern
+        else if (wave <= 9) {
             if (frameCount % 30 == 0) {
                 int ring = (frameCount / 30) % 3;
                 int cnt = 8 + ring * 2;
@@ -1224,6 +1234,49 @@ public class BulletHellGame extends JPanel
                     for (int s = -1; s <= 1; s++)
                         enemyBullets.add(new Bullet(cx, cy, Math.cos(base + s * 0.18) * spd,
                                 Math.sin(base + s * 0.18) * spd, Color.YELLOW, true));
+                }
+            }
+        }
+        // Wave 10: KITSUNE — spirit lance mechanic
+        // Fires fast red lances that DECELERATE, leaving visible gaps to dodge
+        // Wave 10: KITSUNE — spirit lance mechanic
+        else if (wave == 10) {
+            // Fox fire ring — slow lingering orbs
+            if (frameCount % 100 == 0) {
+                int cnt = 8;
+                double rot = Math.toRadians(frameCount * 1.2);
+                for (int i = 0; i < cnt; i++) {
+                    double a = 2 * Math.PI * i / cnt + rot;
+                    enemyBullets.add(new KitsuneFoxFireBullet(cx, cy,
+                            Math.cos(a) * 1.2, Math.sin(a) * 1.2));
+                }
+            }
+            // Spirit lances — fast aimed shots that decelerate
+            if (frameCount % 55 == 0) {
+                double dx = player.x - cx, dy2 = player.y - cy;
+                double len = Math.sqrt(dx * dx + dy2 * dy2);
+                if (len > 0) {
+                    double base = Math.atan2(dy2, dx);
+                    int lanceCount = 5;
+                    double gapAngle = 0.30;
+                    for (int i = 0; i < lanceCount; i++) {
+                        double offset = (i - lanceCount / 2) * gapAngle;
+                        if (i % 2 == 0) {
+                            enemyBullets.add(new KitsuneLanceBullet(cx, cy,
+                                    Math.cos(base + offset), Math.sin(base + offset)));
+                        }
+                    }
+                }
+            }
+            // Tail sweep — light red bullets
+            if (frameCount % 140 == 0) {
+                for (int tail = 0; tail < 3; tail++) {
+                    double sweepBase = Math.toRadians(30 + tail * 60);
+                    for (int s = 0; s < 6; s++) {
+                        double a = sweepBase + Math.toRadians(s * 8);
+                        enemyBullets.add(new KitsuneLanceBullet(cx, cy,
+                                Math.cos(a), Math.sin(a)));
+                    }
                 }
             }
         }
@@ -1493,6 +1546,12 @@ public class BulletHellGame extends JPanel
                     break;
                 case SCENE_JUNGLE:
                     drawSceneJungle(g2);
+                    break;
+                case SCENE_JAPAN:
+                    drawSceneJapan(g2);
+                    break;
+                case SCENE_KITSUNE:
+                    drawSceneKitsune(g2);
                     break;
             }
             if (sceneTransAlpha > 0) {
@@ -2441,6 +2500,216 @@ public class BulletHellGame extends JPanel
         }
     }
 
+    private void drawSceneJapan(Graphics2D g2) {
+        // Calm day/dusk Japan — soft pink sky
+        drawSkyGradient(g2, new Color(180, 120, 160), new Color(220, 170, 190));
+
+        // Soft sun
+        g2.setColor(new Color(255, 220, 180, 60));
+        g2.fillOval(WIDTH - 160, 20, 120, 120);
+        g2.setColor(new Color(255, 200, 150, 100));
+        g2.fillOval(WIDTH - 140, 40, 80, 80);
+        g2.setColor(new Color(255, 230, 200, 200));
+        g2.fillOval(WIDTH - 125, 55, 50, 50);
+
+        // Distant mountains
+        g2.setColor(new Color(140, 100, 130, 120));
+        int[] dmx = { -10, 60, 130, 200, 270, 340, 410, 480, 550, WIDTH + 10 };
+        int[] dmy = { HEIGHT, HEIGHT - 100, HEIGHT - 160, HEIGHT - 120, HEIGHT - 180,
+                HEIGHT - 140, HEIGHT - 170, HEIGHT - 110, HEIGHT - 130, HEIGHT };
+        g2.fillPolygon(dmx, dmy, dmx.length);
+        // Snow caps
+        g2.setColor(new Color(255, 255, 255, 160));
+        g2.fillPolygon(new int[] { 130, 160, 190 }, new int[] { HEIGHT - 160, HEIGHT - 190, HEIGHT - 160 }, 3);
+        g2.fillPolygon(new int[] { 270, 300, 330 }, new int[] { HEIGHT - 180, HEIGHT - 210, HEIGHT - 180 }, 3);
+
+        // Grass ground base
+        g2.setColor(new Color(80, 140, 70, 255));
+        g2.fillRect(0, HEIGHT - 60, WIDTH, 60);
+        g2.setColor(new Color(100, 160, 80, 255));
+        g2.fillRect(0, HEIGHT - 45, WIDTH, 45);
+
+        // Torii gate — vermillion
+        g2.setColor(new Color(180, 40, 20, 220));
+        g2.fillRect(180, HEIGHT - 260, 16, 220);
+        g2.fillRect(280, HEIGHT - 260, 16, 220);
+        g2.fillRect(150, HEIGHT - 260, 76, 14);
+        g2.fillRect(138, HEIGHT - 248, 14, 9);
+        g2.fillRect(288, HEIGHT - 248, 14, 9);
+        g2.fillRect(160, HEIGHT - 234, 56, 10);
+
+        // Stone path
+        g2.setColor(new Color(160, 150, 140, 180));
+        g2.fillRect(WIDTH / 2 - 30, HEIGHT - 60, 60, 60);
+        for (int i = 0; i < 5; i++) {
+            g2.setColor(new Color(140, 130, 120, 160));
+            g2.fillRect(WIDTH / 2 - 26, HEIGHT - 58 + i * 12, 52, 10);
+        }
+
+        // Sakura trees
+        int[] treeX = { 60, 420, 520 };
+        for (int i = 0; i < treeX.length; i++) {
+            int tx = treeX[i];
+            int th = 160 + i * 20;
+            // Trunk
+            g2.setColor(new Color(80, 50, 30, 220));
+            g2.fillRect(tx - 5, HEIGHT - th, 10, th - 40);
+            // Branches
+            g2.setColor(new Color(90, 55, 35, 200));
+            g2.setStroke(new BasicStroke(3f));
+            g2.drawLine(tx, HEIGHT - th + 20, tx - 30, HEIGHT - th - 20);
+            g2.drawLine(tx, HEIGHT - th + 20, tx + 28, HEIGHT - th - 15);
+            g2.setStroke(new BasicStroke(1));
+            // Blossom clusters
+            int[] bx = { tx - 35, tx - 15, tx + 5, tx + 25, tx - 25, tx + 15, tx };
+            int[] by2 = { HEIGHT - th - 18, HEIGHT - th - 35, HEIGHT - th - 40, HEIGHT - th - 25,
+                    HEIGHT - th - 50, HEIGHT - th - 48, HEIGHT - th - 60 };
+            for (int b = 0; b < bx.length; b++) {
+                float bg = (float) (0.6 + 0.4 * Math.sin(frameCount * 0.04 + b + i));
+                g2.setColor(new Color(240, 160, 180, Math.max(0, Math.min(255, (int) (180 * bg)))));
+                g2.fillOval(bx[b] - 18, by2[b] - 18, 36, 36);
+                g2.setColor(new Color(255, 190, 210, Math.max(0, Math.min(255, (int) (220 * bg)))));
+                g2.fillOval(bx[b] - 12, by2[b] - 12, 24, 24);
+            }
+        }
+
+        // Stone lanterns
+        int[] stx = { 340, 390 };
+        for (int i = 0; i < stx.length; i++) {
+            int sx = stx[i];
+            int sy = HEIGHT - 80;
+            g2.setColor(new Color(120, 110, 100, 230));
+            g2.fillRect(sx, sy, 14, 50);
+            g2.fillRect(sx - 6, sy - 20, 26, 22);
+            g2.fillRect(sx - 3, sy - 28, 20, 10);
+            g2.fillRect(sx - 1, sy - 36, 16, 10);
+            float sg = (float) (0.5 + 0.5 * Math.sin(frameCount * 0.05 + i));
+            g2.setColor(new Color(255, 200, 80, Math.max(0, Math.min(255, (int) (80 * sg)))));
+            g2.fillRect(sx - 4, sy - 18, 22, 18);
+        }
+
+        // Falling sakura petals
+        rand.setSeed(frameCount / 4L * 4 + 55);
+        for (int i = 0; i < 40; i++) {
+            int px2 = rand.nextInt(WIDTH);
+            int py2 = (rand.nextInt(HEIGHT) + frameCount * (1 + rand.nextInt(2))) % HEIGHT;
+            float ps = (float) (0.5 + 0.5 * Math.sin(frameCount * 0.05 + i));
+            g2.setColor(new Color(255, 180, 200, Math.max(0, Math.min(255, (int) (160 * ps)))));
+            g2.fillOval(px2, py2, 5 + rand.nextInt(4), 4 + rand.nextInt(3));
+        }
+
+        // Soft mist at base
+        for (int i = 0; i < 4; i++) {
+            int mstx = (int) ((i * 200 + frameCount * 0.3) % (WIDTH + 400)) - 200;
+            g2.setColor(new Color(255, 220, 230, 18));
+            g2.fillOval(mstx, HEIGHT - 75, 320, 50);
+        }
+    }
+
+    private void drawSceneKitsune(Graphics2D g2) {
+        drawSkyGradient(g2, new Color(8, 2, 20), new Color(40, 4, 30));
+
+        // Fox fire orbs
+        rand.setSeed(frameCount / 3L * 3 + 77);
+        for (int i = 0; i < 18; i++) {
+            int fox = (int) ((i * 80 + frameCount * (0.3 + i * 0.05)) % (WIDTH + 100)) - 50;
+            int foy = (int) (120 + i * 35 + Math.sin(frameCount * 0.04 + i * 0.9) * 25);
+            double fopRaw = 0.4 + 0.6 * Math.sin(frameCount * 0.06 + i * 1.3);
+            float fop = (float) Math.max(0, Math.min(1, fopRaw));
+            g2.setColor(new Color(100, 255, 180, Math.max(0, Math.min(255, (int) (18 * fop)))));
+            g2.fillOval(fox - 22, foy - 22, 44, 44);
+            g2.setColor(new Color(120, 255, 160, Math.max(0, Math.min(255, (int) (60 * fop)))));
+            g2.fillOval(fox - 10, foy - 10, 20, 20);
+            g2.setColor(new Color(200, 255, 220, Math.max(0, Math.min(255, (int) (180 * fop)))));
+            g2.fillOval(fox - 4, foy - 4, 8, 8);
+        }
+
+        drawStars(g2, 40, -20, 60, true);
+
+        // Spectral moon
+        int kmx = WIDTH / 2 - 20;
+        int kmy = 45;
+        int kmr = 55;
+        g2.setColor(new Color(120, 60, 180, 25));
+        g2.fillOval(kmx - kmr - 35, kmy - kmr - 35, (kmr + 35) * 2, (kmr + 35) * 2);
+        g2.setColor(new Color(160, 100, 220, 60));
+        g2.fillOval(kmx - kmr - 15, kmy - kmr - 15, (kmr + 15) * 2, (kmr + 15) * 2);
+        g2.setColor(new Color(220, 200, 255));
+        g2.fillOval(kmx - kmr, kmy - kmr, kmr * 2, kmr * 2);
+        g2.setColor(new Color(180, 150, 220, 120));
+        g2.fillOval(kmx - 20, kmy - 18, 28, 20);
+        g2.fillOval(kmx + 10, kmy + 10, 18, 14);
+        for (int r = 1; r <= 5; r++) {
+            g2.setColor(new Color(140, 80, 220, Math.max(0, 40 - r * 8)));
+            g2.setStroke(new BasicStroke(r * 2.5f));
+            g2.drawOval(kmx - kmr - r * 3, kmy - kmr - r * 3,
+                    (kmr + r * 3) * 2, (kmr + r * 3) * 2);
+        }
+        g2.setStroke(new BasicStroke(1));
+
+        // Torii gate violet
+        g2.setColor(new Color(60, 10, 80, 200));
+        g2.fillRect(85, HEIGHT - 310, 18, 270);
+        g2.fillRect(195, HEIGHT - 310, 18, 270);
+        g2.fillRect(55, HEIGHT - 310, 82, 16);
+        g2.fillRect(42, HEIGHT - 298, 16, 10);
+        g2.fillRect(258, HEIGHT - 298, 16, 10);
+        g2.fillRect(65, HEIGHT - 282, 62, 11);
+        float ktg = (float) (0.5 + 0.5 * Math.sin(frameCount * 0.04));
+        g2.setColor(new Color(180, 80, 255, Math.max(0, Math.min(255, (int) (30 * ktg)))));
+        g2.fillRect(50, HEIGHT - 315, 120, 280);
+
+        // Spirit lanterns
+        for (int i = 0; i < 5; i++) {
+            int klx = 95 + i * 22;
+            int kly = HEIGHT - 290;
+            double klgRaw = 0.5 + 0.5 * Math.sin(frameCount * 0.08 + i * 1.1);
+            float klg = (float) Math.max(0, Math.min(1, klgRaw));
+            g2.setColor(new Color(80, 255, 160, Math.max(0, Math.min(255, (int) (50 * klg)))));
+            g2.fillOval(klx - 6, kly - 4, 22, 26);
+            g2.setColor(new Color(100, 255, 180, Math.max(0, Math.min(255, (int) (180 * klg)))));
+            g2.fillRoundRect(klx, kly, 10, 18, 4, 4);
+            g2.setColor(new Color(80, 40, 100, 140));
+            g2.drawLine(klx + 5, kly, klx + 5, kly - 10);
+        }
+
+        // Spirit wisps
+        for (int i = 0; i < 10; i++) {
+            int kwx = (int) ((i * 65 + frameCount * 0.5) % WIDTH);
+            int kwy = HEIGHT - 60 - (int) ((frameCount * 0.8 + i * 40) % 200);
+            double kwaRaw = 0.3 + 0.3 * Math.sin(frameCount * 0.05 + i);
+            float kwa = (float) Math.max(0, Math.min(1, kwaRaw));
+            g2.setColor(new Color(100, 255, 160, Math.max(0, Math.min(255, (int) (40 * kwa)))));
+            g2.fillOval(kwx - 8, kwy - 8, 16, 30);
+            g2.setColor(new Color(180, 255, 220, Math.max(0, Math.min(255, (int) (60 * kwa)))));
+            g2.fillOval(kwx - 3, kwy - 3, 6, 10);
+        }
+
+        // Petals
+        rand.setSeed(frameCount / 5L * 5 + 33);
+        for (int i = 0; i < 40; i++) {
+            int kpx = rand.nextInt(WIDTH);
+            int kpy = (rand.nextInt(HEIGHT) + frameCount * (1 + rand.nextInt(2))) % HEIGHT;
+            double kpsRaw = 0.4 + 0.6 * Math.sin(frameCount * 0.04 + i);
+            float kps = (float) Math.max(0, Math.min(1, kpsRaw));
+            g2.setColor(new Color(220, 180, 255, Math.max(0, Math.min(255, (int) (100 * kps)))));
+            g2.fillOval(kpx, kpy, 4 + rand.nextInt(4), 3 + rand.nextInt(3));
+        }
+
+        // Mist
+        for (int i = 0; i < 7; i++) {
+            int kgx = (int) ((i * 160 + frameCount * 0.3) % (WIDTH + 400)) - 200;
+            g2.setColor(new Color(100, 40, 140, 14));
+            g2.fillOval(kgx, HEIGHT - 80, 320, 70);
+        }
+
+        // Ground
+        g2.setColor(new Color(10, 4, 22, 255));
+        g2.fillRect(0, HEIGHT - 38, WIDTH, 38);
+        g2.setColor(new Color(60, 20, 90, 180));
+        g2.fillRect(0, HEIGHT - 42, WIDTH, 5);
+    }
+
     // ── Menu ──────────────────────────────────────────────────────────
     private void drawMenu(Graphics2D g2) {
         g2.setColor(new Color(255, 60, 60, 160));
@@ -3337,7 +3606,7 @@ public class BulletHellGame extends JPanel
             this.x = (int) bx;
             this.y = (int) by;
             this.waveNum = wave;
-            this.isApex = (wave % 5 == 0);
+            this.isApex = (wave % 5 == 0 && wave != 10);
             maxHp = hp = isApex ? (10 + wave * 20) * 1.1 : Math.min(125, 10 + wave * 20);
             laserInterval = isApex ? Math.max(120, 260 - wave * 8) : 999999;
             laserCooldown = isApex ? laserInterval / 2 : 999999;
@@ -3353,7 +3622,8 @@ public class BulletHellGame extends JPanel
                         "APEX GOD-SLAYER" };
                 return n[Math.min(waveNum / 5 - 1, n.length - 1)] + "  HP";
             }
-            String[] n = { "VOID SCOUT", "REAPER MK-II", "CRIMSON TITAN", "OMEGA CORE", "HELL'S EYE" };
+            String[] n = { "VOID SCOUT", "REAPER MK-II", "CRIMSON TITAN", "OMEGA CORE", "HELL'S EYE",
+                    "BAKENEKO", "NEKOMATA", "TENGU", "TANUKI", "KITSUNE" };
             return n[Math.min(waveNum - 1, n.length - 1)] + "  HP";
         }
 
@@ -3637,6 +3907,16 @@ public class BulletHellGame extends JPanel
         private Color getBossColor() {
             if (isApex)
                 return new Color(255, 60, 0);
+            if (waveNum == 10)
+                return new Color(245, 242, 235); // white fox
+            if (waveNum == 9)
+                return new Color(80, 160, 60);
+            if (waveNum == 8)
+                return new Color(20, 120, 200);
+            if (waveNum == 7)
+                return new Color(180, 60, 160);
+            if (waveNum == 6)
+                return new Color(200, 80, 40);
             switch (waveNum % 5) {
                 case 1:
                     return new Color(180, 20, 20);
@@ -3653,66 +3933,682 @@ public class BulletHellGame extends JPanel
 
         private void drawBossBody(Graphics2D g2, int frame, float pulse, Color base) {
             int cxb = cx();
+            // Shadow
             g2.setColor(new Color(0, 0, 0, 60));
             g2.fillOval((int) bx + 6, (int) by + height - 6, width - 12, 10);
-            Color hullColor = new Color(Math.min(255, base.getRed() + 30), Math.min(255, base.getGreen() + 20),
-                    Math.min(255, base.getBlue() + 20));
-            GradientPaint hull = new GradientPaint((int) bx, (int) by, hullColor, (int) bx, (int) by + height,
-                    base.darker());
-            g2.setPaint(hull);
-            int[] hx = { cxb - width / 2 + 4, cxb - width / 2 + 16, cxb + width / 2 - 16, cxb + width / 2 - 4,
-                    cxb + width / 2 - 4, cxb - width / 2 + 4 };
-            int[] hy = { (int) by + 8, (int) by, (int) by, (int) by + 8, (int) by + height - 4, (int) by + height - 4 };
-            g2.fillPolygon(hx, hy, 6);
-            g2.setPaint(hull);
-            g2.fillPolygon(new int[] { (int) bx, (int) bx - 22, (int) bx - 10, (int) bx + 16 },
-                    new int[] { (int) by + 12, (int) by + height - 4, (int) by + height, (int) by + height }, 4);
-            g2.fillPolygon(
-                    new int[] { (int) bx + width, (int) bx + width + 22, (int) bx + width + 10, (int) bx + width - 16 },
-                    new int[] { (int) by + 12, (int) by + height - 4, (int) by + height, (int) by + height }, 4);
-            if (isApex) {
+
+            if (waveNum == 6) {
+                // ── BAKENEKO — realistic cat silhouette ──
+                // Fur body — rounded, layered
+                g2.setColor(new Color(180, 90, 40));
+                g2.fillOval((int) bx - 4, (int) by + 10, width + 8, height - 6);
+                // Belly fur highlight
+                g2.setColor(new Color(240, 200, 160, 160));
+                g2.fillOval(cxb - 14, (int) by + 18, 28, height - 24);
+                // Fur stripes
+                g2.setColor(new Color(120, 55, 20, 120));
+                g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawArc(cxb - 20, (int) by + 12, 16, 20, -30, 160);
+                g2.drawArc(cxb + 4, (int) by + 12, 16, 20, -150, 160);
+                g2.drawArc(cxb - 10, (int) by + 8, 20, 16, 0, 180);
+                g2.setStroke(new BasicStroke(1));
+                // Rounded head
+                g2.setColor(new Color(185, 95, 42));
+                g2.fillOval(cxb - 24, (int) by - 14, 48, 38);
+                // Cheek fur puffs
+                g2.setColor(new Color(220, 160, 110, 180));
+                g2.fillOval(cxb - 28, (int) by + 2, 22, 16);
+                g2.fillOval(cxb + 6, (int) by + 2, 22, 16);
+                // Realistic triangular ears with depth
+                // Left ear — outer
+                g2.setColor(new Color(185, 95, 42));
+                g2.fillPolygon(
+                        new int[] { cxb - 22, cxb - 34, cxb - 10 },
+                        new int[] { (int) by - 12, (int) by - 36, (int) by - 32 }, 3);
+                // Left ear — inner pink
+                g2.setColor(new Color(220, 130, 130));
+                g2.fillPolygon(
+                        new int[] { cxb - 22, cxb - 30, cxb - 13 },
+                        new int[] { (int) by - 14, (int) by - 30, (int) by - 28 }, 3);
+                // Right ear — outer
+                g2.setColor(new Color(185, 95, 42));
+                g2.fillPolygon(
+                        new int[] { cxb + 22, cxb + 34, cxb + 10 },
+                        new int[] { (int) by - 12, (int) by - 36, (int) by - 32 }, 3);
+                // Right ear — inner pink
+                g2.setColor(new Color(220, 130, 130));
+                g2.fillPolygon(
+                        new int[] { cxb + 22, cxb + 30, cxb + 13 },
+                        new int[] { (int) by - 14, (int) by - 30, (int) by - 28 }, 3);
+                // Muzzle — realistic protruding snout
+                g2.setColor(new Color(235, 190, 150));
+                g2.fillOval(cxb - 13, (int) by + 6, 26, 16);
+                // Nose — small triangle
+                g2.setColor(new Color(220, 100, 110));
+                g2.fillPolygon(
+                        new int[] { cxb - 5, cxb + 5, cxb },
+                        new int[] { (int) by + 9, (int) by + 9, (int) by + 14 }, 3);
+                // Mouth lines
+                g2.setColor(new Color(160, 80, 60, 180));
+                g2.setStroke(new BasicStroke(1.2f));
+                g2.drawArc(cxb - 8, (int) by + 13, 8, 6, 180, 180);
+                g2.drawArc(cxb, (int) by + 13, 8, 6, 180, 180);
+                g2.setStroke(new BasicStroke(1));
+                // Slit pupils — realistic cat eyes
+                g2.setColor(new Color(255, 210, 0));
+                g2.fillOval(cxb - 18, (int) by, 13, 11);
+                g2.fillOval(cxb + 5, (int) by, 13, 11);
+                g2.setColor(Color.BLACK);
+                // vertical slit
+                g2.fillOval(cxb - 13, (int) by + 1, 4, 9);
+                g2.fillOval(cxb + 9, (int) by + 1, 4, 9);
+                // Eye glint
+                g2.setColor(new Color(255, 255, 255, 200));
+                g2.fillOval(cxb - 15, (int) by + 1, 3, 3);
+                g2.fillOval(cxb + 7, (int) by + 1, 3, 3);
+                // Eye glow
+                int eg = (int) (100 + 120 * pulse);
+                g2.setColor(new Color(255, 200, 0, eg / 2));
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawOval(cxb - 19, (int) by - 1, 15, 13);
+                g2.drawOval(cxb + 4, (int) by - 1, 15, 13);
+                g2.setStroke(new BasicStroke(1));
+                // Whiskers — thin realistic lines
+                g2.setColor(new Color(255, 245, 220, 210));
+                g2.setStroke(new BasicStroke(0.9f));
+                g2.drawLine(cxb - 4, (int) by + 12, cxb - 32, (int) by + 8);
+                g2.drawLine(cxb - 4, (int) by + 15, cxb - 32, (int) by + 15);
+                g2.drawLine(cxb - 4, (int) by + 18, cxb - 30, (int) by + 22);
+                g2.drawLine(cxb + 4, (int) by + 12, cxb + 32, (int) by + 8);
+                g2.drawLine(cxb + 4, (int) by + 15, cxb + 32, (int) by + 15);
+                g2.drawLine(cxb + 4, (int) by + 18, cxb + 30, (int) by + 22);
+                g2.setStroke(new BasicStroke(1));
+                // Realistic curved tail
+                g2.setColor(new Color(160, 75, 30));
+                g2.setStroke(new BasicStroke(7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                int tailSwing = (int) (16 * Math.sin(frame * 0.07));
+                g2.drawArc((int) bx + width - 4, (int) by + 8 + tailSwing, 44, 36, -20, 210);
+                // Tail tip lighter
+                g2.setColor(new Color(230, 175, 120));
+                g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawArc((int) bx + width + 10, (int) by + tailSwing + 18, 26, 22, -10, 140);
+                g2.setStroke(new BasicStroke(1));
+                // Fur edge soft outline
+                g2.setColor(new Color(140, 65, 25, 80));
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawOval((int) bx - 4, (int) by + 10, width + 8, height - 6);
+                g2.setStroke(new BasicStroke(1));
+
+            } else if (waveNum == 7) {
+                // ── NEKOMATA — spectral twin-tailed cat, split ethereal body ──
+                // Ghostly aura
+                float gf = (float) (0.4 + 0.6 * Math.abs(Math.sin(frame * 0.09)));
+                g2.setColor(new Color(160, 60, 220, (int) (30 * gf)));
+                g2.fillOval(cxb - 42, (int) by - 18, 84, height + 36);
+                // Split body — left half with fur texture
+                g2.setColor(new Color(80, 40, 120));
+                g2.fillRoundRect((int) bx, (int) by + 12, width / 2 - 3, height - 12, 14, 14);
+                // Right half
+                g2.fillRoundRect(cxb + 3, (int) by + 12, width / 2 - 3, height - 12, 14, 14);
+                // Belly lighter
+                g2.setColor(new Color(140, 90, 180, 160));
+                g2.fillOval((int) bx + 4, (int) by + 18, width / 2 - 10, height - 28);
+                g2.fillOval(cxb + 6, (int) by + 18, width / 2 - 10, height - 28);
+                // Rift glow between halves
+                g2.setColor(new Color(220, 140, 255, (int) (120 * gf)));
+                g2.fillRect(cxb - 4, (int) by + 12, 8, height - 12);
+                g2.setColor(new Color(255, 200, 255, (int) (200 * gf)));
+                g2.fillRect(cxb - 1, (int) by + 12, 2, height - 12);
+                // Rounded head
+                g2.setColor(new Color(90, 45, 130));
+                g2.fillOval(cxb - 25, (int) by - 12, 50, 38);
+                // Cheek fur
+                g2.setColor(new Color(130, 80, 170, 160));
+                g2.fillOval(cxb - 30, (int) by + 4, 22, 15);
+                g2.fillOval(cxb + 8, (int) by + 4, 22, 15);
+                // Ears — sharp ghost cat
+                g2.setColor(new Color(90, 45, 130));
+                g2.fillPolygon(
+                        new int[] { cxb - 20, cxb - 32, cxb - 8 },
+                        new int[] { (int) by - 10, (int) by - 36, (int) by - 32 }, 3);
+                g2.fillPolygon(
+                        new int[] { cxb + 20, cxb + 32, cxb + 8 },
+                        new int[] { (int) by - 10, (int) by - 36, (int) by - 32 }, 3);
+                // Inner ear glow — purple ethereal
+                g2.setColor(new Color(200, 100, 255));
+                g2.fillPolygon(
+                        new int[] { cxb - 20, cxb - 28, cxb - 10 },
+                        new int[] { (int) by - 12, (int) by - 30, (int) by - 27 }, 3);
+                g2.fillPolygon(
+                        new int[] { cxb + 20, cxb + 28, cxb + 10 },
+                        new int[] { (int) by - 12, (int) by - 30, (int) by - 27 }, 3);
+                // Muzzle
+                g2.setColor(new Color(160, 110, 200));
+                g2.fillOval(cxb - 12, (int) by + 8, 24, 14);
+                // Nose
+                g2.setColor(new Color(200, 80, 200));
+                g2.fillPolygon(
+                        new int[] { cxb - 4, cxb + 4, cxb },
+                        new int[] { (int) by + 11, (int) by + 11, (int) by + 15 }, 3);
+                // Mouth
+                g2.setColor(new Color(120, 60, 140, 180));
+                g2.setStroke(new BasicStroke(1.2f));
+                g2.drawArc(cxb - 7, (int) by + 14, 7, 5, 180, 180);
+                g2.drawArc(cxb, (int) by + 14, 7, 5, 180, 180);
+                g2.setStroke(new BasicStroke(1));
+                // Spectral slit eyes — glowing
+                g2.setColor(new Color(220, 100, 255));
+                g2.fillOval(cxb - 17, (int) by + 2, 13, 10);
+                g2.fillOval(cxb + 4, (int) by + 2, 13, 10);
+                g2.setColor(Color.BLACK);
+                g2.fillOval(cxb - 14, (int) by + 3, 4, 8);
+                g2.fillOval(cxb + 7, (int) by + 3, 4, 8);
+                g2.setColor(new Color(255, 255, 255, 200));
+                g2.fillOval(cxb - 15, (int) by + 3, 3, 3);
+                g2.fillOval(cxb + 6, (int) by + 3, 3, 3);
+                int eg = (int) (100 + 120 * pulse);
+                g2.setColor(new Color(200, 60, 255, eg / 2));
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawOval(cxb - 18, (int) by + 1, 15, 12);
+                g2.drawOval(cxb + 3, (int) by + 1, 15, 12);
+                g2.setStroke(new BasicStroke(1));
+                // Whiskers
+                g2.setColor(new Color(220, 180, 255, 180));
+                g2.setStroke(new BasicStroke(0.9f));
+                g2.drawLine(cxb - 4, (int) by + 13, cxb - 30, (int) by + 9);
+                g2.drawLine(cxb - 4, (int) by + 16, cxb - 30, (int) by + 16);
+                g2.drawLine(cxb + 4, (int) by + 13, cxb + 30, (int) by + 9);
+                g2.drawLine(cxb + 4, (int) by + 16, cxb + 30, (int) by + 16);
+                g2.setStroke(new BasicStroke(1));
+                // Twin tails — thick and fluffy with a ghostly fade
+                int ts = (int) (15 * Math.sin(frame * 0.08));
+                g2.setColor(new Color(100, 50, 150, 200));
+                g2.setStroke(new BasicStroke(7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                // left tail sweeps left/up
+                g2.drawArc((int) bx - 42, (int) by + 14 - ts, 44, 32, -10, 200);
+                // right tail sweeps right/up
+                g2.drawArc((int) bx + width - 2, (int) by + 14 + ts, 44, 32, -170, 200);
+                // tail tip glow
+                g2.setColor(new Color(200, 120, 255, (int) (160 * gf)));
+                g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawArc((int) bx - 38, (int) by + 18 - ts, 28, 20, 10, 130);
+                g2.drawArc((int) bx + width + 10, (int) by + 18 + ts, 28, 20, -140, 130);
+                g2.setStroke(new BasicStroke(1));
+                // Soft fur outline
+                g2.setColor(new Color(160, 80, 200, 70));
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawRoundRect((int) bx, (int) by + 12, width / 2 - 3, height - 12, 14, 14);
+                g2.drawRoundRect(cxb + 3, (int) by + 12, width / 2 - 3, height - 12, 14, 14);
+                g2.setStroke(new BasicStroke(1));
+
+            } else if (waveNum == 8) {
+                // ── TENGU — realistic winged demon, feathered, long beak ──
+                int wingFlap = (int) (14 * Math.sin(frame * 0.10));
+                // Wing shadow
+                g2.setColor(new Color(0, 0, 0, 50));
+                g2.fillPolygon(
+                        new int[] { cxb - 8, (int) bx - 56, (int) bx - 28, cxb - 6 },
+                        new int[] { (int) by + 22, (int) by + 14 - wingFlap + 6, (int) by + height + 6,
+                                (int) by + height + 6 },
+                        4);
+                g2.fillPolygon(
+                        new int[] { cxb + 8, (int) bx + width + 56, (int) bx + width + 28, cxb + 6 },
+                        new int[] { (int) by + 22, (int) by + 14 - wingFlap + 6, (int) by + height + 6,
+                                (int) by + height + 6 },
+                        4);
+                // Main wing membrane — dark blue-black
+                g2.setColor(new Color(18, 22, 55, 220));
+                g2.fillPolygon(
+                        new int[] { cxb - 8, (int) bx - 58, (int) bx - 26, cxb - 5 },
+                        new int[] { (int) by + 20, (int) by + 12 - wingFlap, (int) by + height, (int) by + height }, 4);
+                g2.fillPolygon(
+                        new int[] { cxb + 8, (int) bx + width + 58, (int) bx + width + 26, cxb + 5 },
+                        new int[] { (int) by + 20, (int) by + 12 - wingFlap, (int) by + height, (int) by + height }, 4);
+                // Wing feather layers — each a darker polygon
+                g2.setColor(new Color(30, 40, 80, 200));
+                g2.fillPolygon(
+                        new int[] { cxb - 10, (int) bx - 40, (int) bx - 20, cxb - 8 },
+                        new int[] { (int) by + 22, (int) by + 18 - wingFlap, (int) by + height, (int) by + height }, 4);
+                g2.fillPolygon(
+                        new int[] { cxb + 10, (int) bx + width + 40, (int) bx + width + 20, cxb + 8 },
+                        new int[] { (int) by + 22, (int) by + 18 - wingFlap, (int) by + height, (int) by + height }, 4);
+                // Feather quill lines
+                g2.setColor(new Color(60, 80, 140, 140));
+                g2.setStroke(new BasicStroke(1.2f));
+                for (int f2 = 1; f2 <= 5; f2++) {
+                    float ft = f2 / 6f;
+                    int wx1 = (int) (cxb - 9 - (58 - 9) * ft);
+                    int wy1 = (int) (by + 20 - (20 - 12 + wingFlap) * ft);
+                    int wx2 = (int) (cxb - 8 - (26 - 8) * ft);
+                    int wy2 = (int) (by + height);
+                    g2.drawLine(wx1, wy1, wx2, wy2);
+                    int rx1 = (int) (cxb + 9 + (58 - 9) * ft);
+                    int rx2 = (int) (cxb + 8 + (26 - 8) * ft);
+                    g2.drawLine(rx1, wy1, rx2, wy2);
+                }
+                g2.setStroke(new BasicStroke(1));
+                // Body — layered robes
+                // Outer robe — dark
+                g2.setColor(new Color(18, 18, 45));
+                g2.fillRoundRect((int) bx + 5, (int) by + 6, width - 10, height - 6, 18, 18);
+                // Inner robe — blue stripe
+                g2.setColor(new Color(20, 60, 120, 180));
+                g2.fillRoundRect((int) bx + 14, (int) by + 10, width - 28, height - 10, 12, 12);
+                // Robe sash
+                g2.setColor(new Color(160, 30, 30, 200));
+                g2.fillRect((int) bx + 8, (int) by + height / 2, width - 16, 6);
+                // Head — fierce humanoid face
+                g2.setColor(new Color(20, 18, 45));
+                g2.fillOval(cxb - 20, (int) by - 10, 40, 36);
+                // Face skin — more humanoid
+                g2.setColor(new Color(50, 38, 28));
+                g2.fillOval(cxb - 14, (int) by - 4, 28, 28);
+                // Realistic long tengu nose/beak — protruding
+                g2.setColor(new Color(180, 60, 30));
+                // Ridge of nose
+                int[] noseX = { cxb - 5, cxb + 5, cxb + 3, cxb, cxb - 3 };
+                int[] noseY = { (int) by + 10, (int) by + 10, (int) by + 20, (int) by + 38, (int) by + 20 };
+                g2.fillPolygon(noseX, noseY, 5);
+                // Nostril shading
+                g2.setColor(new Color(120, 35, 20));
+                g2.fillOval(cxb - 4, (int) by + 16, 4, 4);
+                g2.fillOval(cxb + 1, (int) by + 16, 4, 4);
+                // Eyes — fierce slanted
+                g2.setColor(new Color(255, 60, 0));
+                // Left eye
+                int[] lew = { cxb - 16, cxb - 8, cxb - 6, cxb - 14 };
+                int[] leh = { (int) by + 4, (int) by + 2, (int) by + 10, (int) by + 12 };
+                g2.fillPolygon(lew, leh, 4);
+                // Right eye
+                int[] rew = { cxb + 16, cxb + 8, cxb + 6, cxb + 14 };
+                g2.fillPolygon(rew, leh, 4);
+                // Pupils
+                g2.setColor(Color.BLACK);
+                g2.fillOval(cxb - 14, (int) by + 4, 6, 7);
+                g2.fillOval(cxb + 8, (int) by + 4, 6, 7);
+                // Iris glow
+                int eg = (int) (110 + 110 * pulse);
+                g2.setColor(new Color(255, 80, 0, eg));
+                g2.fillOval(cxb - 13, (int) by + 5, 3, 4);
+                g2.fillOval(cxb + 9, (int) by + 5, 3, 4);
+                // Eye whites glint
+                g2.setColor(new Color(255, 180, 100, 180));
+                g2.fillOval(cxb - 15, (int) by + 4, 3, 3);
+                g2.fillOval(cxb + 7, (int) by + 4, 3, 3);
+                // Eyebrows — fierce angled
+                g2.setColor(new Color(10, 10, 30));
+                g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(cxb - 17, (int) by + 2, cxb - 6, (int) by + 5);
+                g2.drawLine(cxb + 17, (int) by + 2, cxb + 6, (int) by + 5);
+                g2.setStroke(new BasicStroke(1));
+                // Tokin hat — realistic black box
+                g2.setColor(new Color(10, 10, 25));
+                g2.fillRect(cxb - 6, (int) by - 26, 12, 18);
+                g2.setColor(new Color(15, 15, 38));
+                g2.fillOval(cxb - 16, (int) by - 12, 32, 10);
+                // Hat brim highlight
+                g2.setColor(new Color(50, 50, 90, 130));
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawOval(cxb - 16, (int) by - 12, 32, 10);
+                g2.setStroke(new BasicStroke(1));
+                // Robes outline
+                g2.setColor(new Color(80, 100, 180, 60));
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawRoundRect((int) bx + 5, (int) by + 6, width - 10, height - 6, 18, 18);
+                g2.setStroke(new BasicStroke(1));
+            } else if (waveNum == 9) {
+                // ── TANUKI — realistic raccoon dog ──
+                // Fluffy round body with fur gradient
+                g2.setColor(new Color(90, 65, 30));
+                g2.fillOval((int) bx - 10, (int) by + 4, width + 20, height + 4);
+                // Belly cream patch
+                g2.setColor(new Color(200, 175, 120, 200));
+                g2.fillOval(cxb - 14, (int) by + 16, 28, height - 14);
+                // Fur stripe texture on back
+                g2.setColor(new Color(60, 40, 15, 100));
+                g2.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawArc(cxb - 24, (int) by + 6, 48, 30, 0, 180);
+                g2.drawArc(cxb - 18, (int) by + 10, 36, 22, 0, 180);
+                g2.setStroke(new BasicStroke(1));
+                // Big round head
+                g2.setColor(new Color(95, 68, 32));
+                g2.fillOval(cxb - 26, (int) by - 14, 52, 44);
+                // Forehead darker stripe
+                g2.setColor(new Color(40, 28, 10, 140));
+                g2.fillOval(cxb - 16, (int) by - 14, 32, 16);
+                // Classic raccoon mask — dark patches around eyes
+                g2.setColor(new Color(25, 18, 8, 230));
+                g2.fillOval(cxb - 22, (int) by, 18, 14);
+                g2.fillOval(cxb + 4, (int) by, 18, 14);
+                // Eyes — bright realistic
+                g2.setColor(new Color(70, 180, 70));
+                g2.fillOval(cxb - 20, (int) by + 2, 13, 11);
+                g2.fillOval(cxb + 7, (int) by + 2, 13, 11);
+                // Pupils
+                g2.setColor(Color.BLACK);
+                g2.fillOval(cxb - 16, (int) by + 3, 7, 9);
+                g2.fillOval(cxb + 9, (int) by + 3, 7, 9);
+                // Iris glint
+                g2.setColor(new Color(255, 255, 255, 200));
+                g2.fillOval(cxb - 15, (int) by + 4, 3, 3);
+                g2.fillOval(cxb + 10, (int) by + 4, 3, 3);
+                // Eye glow
+                int eg = (int) (100 + 120 * pulse);
+                g2.setColor(new Color(60, 220, 60, eg / 2));
+                g2.setStroke(new BasicStroke(1.2f));
+                g2.drawOval(cxb - 21, (int) by + 1, 15, 13);
+                g2.drawOval(cxb + 6, (int) by + 1, 15, 13);
+                g2.setStroke(new BasicStroke(1));
+                // Cheek fur puffs
+                g2.setColor(new Color(140, 100, 50, 180));
+                g2.fillOval(cxb - 32, (int) by + 8, 22, 18);
+                g2.fillOval(cxb + 10, (int) by + 8, 22, 18);
+                // Realistic muzzle protrusion
+                g2.setColor(new Color(185, 155, 100));
+                g2.fillOval(cxb - 14, (int) by + 14, 28, 18);
+                // Nose — prominent black tanuki nose
+                g2.setColor(new Color(20, 15, 10));
+                g2.fillOval(cxb - 7, (int) by + 15, 14, 10);
+                // Nose highlight
+                g2.setColor(new Color(80, 60, 50, 160));
+                g2.fillOval(cxb - 5, (int) by + 16, 5, 4);
+                // Mouth
+                g2.setColor(new Color(100, 70, 30, 180));
+                g2.setStroke(new BasicStroke(1.2f));
+                g2.drawArc(cxb - 9, (int) by + 22, 9, 6, 180, 180);
+                g2.drawArc(cxb, (int) by + 22, 9, 6, 180, 180);
+                g2.setStroke(new BasicStroke(1));
+                // Ears — small round furry
+                g2.setColor(new Color(85, 60, 28));
+                g2.fillOval(cxb - 28, (int) by - 14, 18, 15);
+                g2.fillOval(cxb + 10, (int) by - 14, 18, 15);
+                // Inner ears
+                g2.setColor(new Color(200, 140, 100));
+                g2.fillOval(cxb - 25, (int) by - 11, 12, 9);
+                g2.fillOval(cxb + 13, (int) by - 11, 12, 9);
+                // Straw hat — kasa
+                g2.setColor(new Color(110, 80, 24));
+                g2.fillOval(cxb - 42, (int) by - 20, 84, 18);
+                g2.setColor(new Color(140, 105, 35));
+                g2.fillOval(cxb - 26, (int) by - 30, 52, 18);
+                g2.setColor(new Color(80, 55, 14));
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawOval(cxb - 42, (int) by - 20, 84, 18);
+                // Concentric hat rings for realism
+                g2.setColor(new Color(90, 65, 18, 100));
+                g2.drawOval(cxb - 34, (int) by - 19, 68, 14);
+                g2.drawOval(cxb - 22, (int) by - 27, 44, 14);
+                g2.setStroke(new BasicStroke(1));
+                // Belly fur outline
+                g2.setColor(new Color(70, 50, 20, 80));
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawOval((int) bx - 10, (int) by + 4, width + 20, height + 4);
+                g2.setStroke(new BasicStroke(1));
+
+            } else if (waveNum == 10) {
+                // ── KITSUNE — white fox with red markings, flowing orange tails ──
+                float sf2 = (float) (0.5 + 0.5 * Math.sin(frame * 0.10));
+
+                // ── TAILS — drawn first (behind body) ──
+                // 5 flowing tails, orange-red gradient, fluffy
+                int tailCount = 5;
+                for (int t2 = 0; t2 < tailCount; t2++) {
+                    float tSwing = (float) (20 * Math.sin(frame * 0.07 + t2 * 0.85));
+                    int baseAlpha = 220 - t2 * 18;
+
+                    // Outer fur — deep orange
+                    g2.setColor(new Color(200, 80, 20, baseAlpha - 50));
+                    g2.setStroke(new BasicStroke(10f - t2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawArc(
+                            (int) bx + width - 10 + t2 * 6,
+                            (int) by + 4 + (int) (tSwing),
+                            58 + t2 * 10, 44,
+                            -55 + t2 * 6, 230);
+
+                    // Mid fur — orange
+                    g2.setColor(new Color(240, 120, 30, baseAlpha));
+                    g2.setStroke(new BasicStroke(7f - t2 * 0.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawArc(
+                            (int) bx + width - 6 + t2 * 6,
+                            (int) by + 8 + (int) (tSwing),
+                            50 + t2 * 10, 38,
+                            -48 + t2 * 5, 210);
+
+                    // Inner tip — white/cream
+                    g2.setColor(new Color(255, 245, 220, baseAlpha));
+                    g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawArc(
+                            (int) bx + width + 2 + t2 * 8,
+                            (int) by + 14 + (int) (tSwing),
+                            36 + t2 * 8, 26,
+                            -38 + t2 * 4, 170);
+
+                    // Glowing tail tip
+                    float tp2 = (float) (0.5 + 0.5 * Math.sin(frame * 0.09 + t2 * 1.2));
+                    g2.setColor(new Color(255, 160, 60, (int) (150 * tp2)));
+                    g2.fillOval(
+                            (int) bx + width + 42 + t2 * 8,
+                            (int) by + 10 + (int) (tSwing) + 6,
+                            14, 14);
+                    g2.setColor(new Color(255, 220, 140, (int) (180 * tp2)));
+                    g2.fillOval(
+                            (int) bx + width + 46 + t2 * 8,
+                            (int) by + 14 + (int) (tSwing) + 6,
+                            6, 6);
+                }
+                g2.setStroke(new BasicStroke(1));
+
+                // ── BODY ──
+                // Main white body
+                g2.setColor(new Color(245, 242, 235));
+                g2.fillRoundRect((int) bx + 4, (int) by + 8, width - 8, height - 8, 18, 18);
+                // Cream belly
+                g2.setColor(new Color(255, 250, 240));
+                g2.fillOval(cxb - 16, (int) by + 14, 32, height - 16);
+                // Red stripe markings on body — like the reference
+                g2.setColor(new Color(200, 40, 20, 180));
+                g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawArc(cxb - 22, (int) by + 10, 18, 22, -20, 160);
+                g2.drawArc(cxb + 4, (int) by + 10, 18, 22, -160, 160);
+                g2.drawArc(cxb - 14, (int) by + 6, 28, 14, 0, 180);
+                g2.setStroke(new BasicStroke(1));
+                // Side flank fur tufts — orange
+                g2.setColor(new Color(230, 110, 30, 180));
+                g2.fillPolygon(
+                        new int[] { (int) bx + 4, (int) bx - 18, (int) bx - 6, (int) bx + 18 },
+                        new int[] { (int) by + 14, (int) by + height - 2, (int) by + height, (int) by + height }, 4);
+                g2.fillPolygon(
+                        new int[] { (int) bx + width - 4, (int) bx + width + 18, (int) bx + width + 6,
+                                (int) bx + width - 18 },
+                        new int[] { (int) by + 14, (int) by + height - 2, (int) by + height, (int) by + height }, 4);
+
+                // ── HEAD ──
+                // White head base
+                g2.setColor(new Color(248, 244, 238));
+                g2.fillOval(cxb - 24, (int) by - 16, 48, 42);
+                // Red forehead V marking — key feature from reference
+                g2.setColor(new Color(200, 35, 15));
+                int[] vMarkX = { cxb, cxb - 12, cxb - 7, cxb, cxb + 7, cxb + 12 };
+                int[] vMarkY = { (int) by - 4, (int) by - 16, (int) by - 7, (int) by - 2, (int) by - 7, (int) by - 16 };
+                g2.fillPolygon(vMarkX, vMarkY, 6);
+                // Red cheek stripes
+                g2.setColor(new Color(200, 35, 15, 180));
+                g2.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(cxb - 20, (int) by + 8, cxb - 30, (int) by + 14);
+                g2.drawLine(cxb - 20, (int) by + 12, cxb - 28, (int) by + 20);
+                g2.drawLine(cxb + 20, (int) by + 8, cxb + 30, (int) by + 14);
+                g2.drawLine(cxb + 20, (int) by + 12, cxb + 28, (int) by + 20);
+                g2.setStroke(new BasicStroke(1));
+
+                // ── EARS — large pointed white with orange-red inner ──
+                // Left ear — white outer
+                g2.setColor(new Color(248, 244, 238));
+                g2.fillPolygon(
+                        new int[] { cxb - 18, cxb - 32, cxb - 6 },
+                        new int[] { (int) by - 14, (int) by - 44, (int) by - 40 }, 3);
+                // Left ear — orange-red inner
+                g2.setColor(new Color(220, 80, 30));
+                g2.fillPolygon(
+                        new int[] { cxb - 19, cxb - 28, cxb - 9 },
+                        new int[] { (int) by - 16, (int) by - 38, (int) by - 34 }, 3);
+                // Left ear — dark grey tip
+                g2.setColor(new Color(80, 70, 65));
+                g2.fillPolygon(
+                        new int[] { cxb - 24, cxb - 32, cxb - 18 },
+                        new int[] { (int) by - 34, (int) by - 44, (int) by - 42 }, 3);
+
+                // Right ear — white outer
+                g2.setColor(new Color(248, 244, 238));
+                g2.fillPolygon(
+                        new int[] { cxb + 18, cxb + 32, cxb + 6 },
+                        new int[] { (int) by - 14, (int) by - 44, (int) by - 40 }, 3);
+                // Right ear — orange-red inner
+                g2.setColor(new Color(220, 80, 30));
+                g2.fillPolygon(
+                        new int[] { cxb + 19, cxb + 28, cxb + 9 },
+                        new int[] { (int) by - 16, (int) by - 38, (int) by - 34 }, 3);
+                // Right ear — dark grey tip
+                g2.setColor(new Color(80, 70, 65));
+                g2.fillPolygon(
+                        new int[] { cxb + 24, cxb + 32, cxb + 18 },
+                        new int[] { (int) by - 34, (int) by - 44, (int) by - 42 }, 3);
+
+                // ── MUZZLE — white protruding snout ──
+                g2.setColor(new Color(252, 248, 242));
+                g2.fillOval(cxb - 14, (int) by + 8, 28, 18);
+                // Nose — small dark red
+                g2.setColor(new Color(160, 30, 20));
+                g2.fillPolygon(
+                        new int[] { cxb - 5, cxb + 5, cxb },
+                        new int[] { (int) by + 12, (int) by + 12, (int) by + 17 }, 3);
+                // Nose highlight
+                g2.setColor(new Color(200, 100, 100, 150));
+                g2.fillOval(cxb - 4, (int) by + 12, 4, 3);
+                // Mouth lines
+                g2.setColor(new Color(140, 60, 40, 160));
+                g2.setStroke(new BasicStroke(1.2f));
+                g2.drawArc(cxb - 8, (int) by + 16, 8, 6, 180, 180);
+                g2.drawArc(cxb, (int) by + 16, 8, 6, 180, 180);
+                g2.setStroke(new BasicStroke(1));
+
+                // ── EYES — fierce amber/orange, almond-shaped ──
+                // Eye white base
+                g2.setColor(new Color(240, 200, 100));
+                int[] lExK = { cxb - 21, cxb - 8, cxb - 6, cxb - 19 };
+                int[] lEyK = { (int) by + 1, (int) by - 2, (int) by + 10, (int) by + 13 };
+                g2.fillPolygon(lExK, lEyK, 4);
+                int[] rExK = { cxb + 21, cxb + 8, cxb + 6, cxb + 19 };
+                g2.fillPolygon(rExK, lEyK, 4);
+                // Amber iris
+                g2.setColor(new Color(210, 130, 20));
+                g2.fillOval(cxb - 19, (int) by, 11, 10);
+                g2.fillOval(cxb + 8, (int) by, 11, 10);
+                // Pupils — vertical slit like fox
+                g2.setColor(Color.BLACK);
+                g2.fillOval(cxb - 16, (int) by + 1, 5, 9);
+                g2.fillOval(cxb + 11, (int) by + 1, 5, 9);
+                // Glint
+                g2.setColor(new Color(255, 255, 255, 210));
+                g2.fillOval(cxb - 18, (int) by + 1, 3, 3);
+                g2.fillOval(cxb + 9, (int) by + 1, 3, 3);
+                // Red eye marking — like reference image stripe above eye
+                g2.setColor(new Color(200, 35, 15, 200));
+                g2.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(cxb - 22, (int) by - 1, cxb - 7, (int) by - 3);
+                g2.drawLine(cxb + 22, (int) by - 1, cxb + 7, (int) by - 3);
+                g2.setStroke(new BasicStroke(1));
+                // Eye glow
+                int eg = (int) (100 + 120 * pulse);
+                g2.setColor(new Color(255, 160, 20, eg / 2));
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawOval(cxb - 20, (int) by - 1, 13, 12);
+                g2.drawOval(cxb + 7, (int) by - 1, 13, 12);
+                g2.setStroke(new BasicStroke(1));
+
+                // ── WHISKERS ──
+                g2.setColor(new Color(255, 252, 245, 200));
+                g2.setStroke(new BasicStroke(0.9f));
+                g2.drawLine(cxb - 4, (int) by + 14, cxb - 34, (int) by + 10);
+                g2.drawLine(cxb - 4, (int) by + 17, cxb - 34, (int) by + 17);
+                g2.drawLine(cxb - 4, (int) by + 20, cxb - 32, (int) by + 24);
+                g2.drawLine(cxb + 4, (int) by + 14, cxb + 34, (int) by + 10);
+                g2.drawLine(cxb + 4, (int) by + 17, cxb + 34, (int) by + 17);
+                g2.drawLine(cxb + 4, (int) by + 20, cxb + 32, (int) by + 24);
+                g2.setStroke(new BasicStroke(1));
+
+                // ── SPIRIT ORB — fox fire green tinted ──
+                g2.setColor(new Color(80, 200, 120, (int) (40 * sf2)));
+                g2.fillOval(cxb - 14, (int) by + height / 2 - 10, 28, 20);
+                g2.setColor(new Color(160, 255, 200, (int) (80 * sf2)));
+                g2.fillOval(cxb - 7, (int) by + height / 2 - 5, 14, 10);
+
+                // Fur outline
+                g2.setColor(new Color(180, 160, 130, 70));
+                g2.setStroke(new BasicStroke(1.8f));
+                g2.drawRoundRect((int) bx + 4, (int) by + 8, width - 8, height - 8, 18, 18);
+                g2.setStroke(new BasicStroke(1));
+            } else {
+                // ── DEFAULT boss for all other waves ──
+                Color hullColor = new Color(
+                        Math.min(255, base.getRed() + 30),
+                        Math.min(255, base.getGreen() + 20),
+                        Math.min(255, base.getBlue() + 20));
+                GradientPaint hull = new GradientPaint(
+                        (int) bx, (int) by, hullColor,
+                        (int) bx, (int) by + height, base.darker());
+                g2.setPaint(hull);
+                int[] hx = {
+                        cxb - width / 2 + 4, cxb - width / 2 + 16,
+                        cxb + width / 2 - 16, cxb + width / 2 - 4,
+                        cxb + width / 2 - 4, cxb - width / 2 + 4 };
+                int[] hy = {
+                        (int) by + 8, (int) by,
+                        (int) by, (int) by + 8,
+                        (int) by + height - 4, (int) by + height - 4 };
+                g2.fillPolygon(hx, hy, 6);
                 g2.setPaint(null);
-                g2.setColor(base.darker());
-                g2.fillRect((int) bx - 36, (int) by + 18, 14, 8);
-                g2.fillRect((int) bx + width + 22, (int) by + 18, 14, 8);
-                g2.setColor(new Color(255, 160, 0, (int) (180 * pulse)));
-                g2.fillOval((int) bx - 40, (int) by + 17, 8, 8);
-                g2.fillOval((int) bx + width + 32, (int) by + 17, 8, 8);
-            }
-            g2.setPaint(null);
-            g2.setColor(new Color(255, 255, 255, 60));
-            g2.setStroke(new BasicStroke(1.5f));
-            g2.drawPolygon(hx, hy, 6);
-            g2.setStroke(new BasicStroke(1));
-            if (waveNum >= 2) {
-                float cf = (float) (0.4 + 0.6 * Math.abs(Math.sin(frame * (isApex ? 0.14 : 0.07))));
-                g2.setColor(new Color(255, 255, 255, (int) (90 * cf)));
-                g2.fillOval(cxb - 18, (int) by + height / 2 - 12, 36, 24);
-            }
-            g2.setColor(isApex ? new Color(255, 80, 0) : Color.YELLOW);
-            g2.fillOval(cxb - 22, (int) by + 14, 14, 14);
-            g2.fillOval(cxb + 8, (int) by + 14, 14, 14);
-            g2.setColor(Color.BLACK);
-            g2.fillOval(cxb - 19, (int) by + 17, 8, 8);
-            g2.fillOval(cxb + 11, (int) by + 17, 8, 8);
-            int eyeGlow = (int) (120 + 100 * pulse);
-            g2.setColor(isApex ? new Color(255, 120, 0, eyeGlow) : new Color(255, 200, 0, eyeGlow));
-            g2.fillOval(cxb - 21, (int) by + 15, 4, 4);
-            g2.fillOval(cxb + 9, (int) by + 15, 4, 4);
-            if (isApex && laserState == LASER_TELEGRAPH) {
-                float tf = 1f - (laserTimer / 120f);
-                // expanding ring
-                int ringR = (int) (20 + 60 * tf);
-                g2.setColor(new Color(255, 30, 30, (int) (80 * (1 - tf))));
-                g2.setStroke(new BasicStroke(3f));
-                g2.drawOval(cxb - ringR, (int) by + height / 2 - ringR / 2, ringR * 2, ringR);
+                g2.setColor(new Color(base.getRed(), base.getGreen(), base.getBlue(), 160));
+                g2.fillPolygon(
+                        new int[] { (int) bx, (int) bx - 22, (int) bx - 10, (int) bx + 16 },
+                        new int[] { (int) by + 12, (int) by + height - 4, (int) by + height, (int) by + height }, 4);
+                g2.fillPolygon(
+                        new int[] { (int) bx + width, (int) bx + width + 22, (int) bx + width + 10,
+                                (int) bx + width - 16 },
+                        new int[] { (int) by + 12, (int) by + height - 4, (int) by + height, (int) by + height }, 4);
+                g2.setColor(new Color(255, 255, 255, 60));
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawPolygon(hx, hy, 6);
                 g2.setStroke(new BasicStroke(1));
-                int ra = (int) (80 + 120 * tf);
-                g2.setColor(new Color(255, 30, 30, ra));
-                g2.setStroke(new BasicStroke(2f + tf * 3));
-                g2.drawOval(cxb - 24, (int) by - 6, 48, 48);
-                g2.setStroke(new BasicStroke(1));
+                if (waveNum >= 2) {
+                    float cf = (float) (0.4 + 0.6 * Math.abs(Math.sin(frame * (isApex ? 0.14 : 0.07))));
+                    g2.setColor(new Color(255, 255, 255, (int) (90 * cf)));
+                    g2.fillOval(cxb - 18, (int) by + height / 2 - 12, 36, 24);
+                }
+                g2.setColor(isApex ? new Color(255, 80, 0) : Color.YELLOW);
+                g2.fillOval(cxb - 22, (int) by + 14, 14, 14);
+                g2.fillOval(cxb + 8, (int) by + 14, 14, 14);
+                g2.setColor(Color.BLACK);
+                g2.fillOval(cxb - 19, (int) by + 17, 8, 8);
+                g2.fillOval(cxb + 11, (int) by + 17, 8, 8);
+                int eyeGlow = (int) (120 + 100 * pulse);
+                g2.setColor(isApex ? new Color(255, 120, 0, eyeGlow) : new Color(255, 200, 0, eyeGlow));
+                g2.fillOval(cxb - 21, (int) by + 15, 4, 4);
+                g2.fillOval(cxb + 9, (int) by + 15, 4, 4);
+                if (isApex && laserState == LASER_TELEGRAPH) {
+                    float tf = 1f - (laserTimer / 120f);
+                    int ringR = (int) (20 + 60 * tf);
+                    g2.setColor(new Color(255, 30, 30, (int) (80 * (1 - tf))));
+                    g2.setStroke(new BasicStroke(3f));
+                    g2.drawOval(cxb - ringR, (int) by + height / 2 - ringR / 2, ringR * 2, ringR);
+                    g2.setStroke(new BasicStroke(1));
+                    int ra = (int) (80 + 120 * tf);
+                    g2.setColor(new Color(255, 30, 30, ra));
+                    g2.setStroke(new BasicStroke(2f + tf * 3));
+                    g2.drawOval(cxb - 24, (int) by - 6, 48, 48);
+                    g2.setStroke(new BasicStroke(1));
+                }
             }
+
         }
 
         private void drawEngineTrail(Graphics2D g2, int frame, float pulse) {
@@ -4031,6 +4927,218 @@ public class BulletHellGame extends JPanel
             g2.setStroke(new BasicStroke(1));
             g2.setColor(new Color(0, 255, 100));
             g2.fillOval((int) x - 6, (int) y - 6, 12, 12);
+        }
+    }// Kitsune lance — fires fast then decelerates sharply, player can see gap
+     // forming
+
+    class KitsuneLanceBullet extends Bullet {
+        double speed;
+        static final double INITIAL_SPEED = 16.0;
+        static final double MIN_SPEED = 1.8;
+        static final double DECEL = 0.88;
+        final java.util.Deque<double[]> trail = new java.util.ArrayDeque<>();
+
+        KitsuneLanceBullet(double x, double y, double dirX, double dirY) {
+            super(x, y, dirX * INITIAL_SPEED, dirY * INITIAL_SPEED,
+                    new Color(255, 140, 140), true);
+            this.speed = INITIAL_SPEED;
+            this.size = 8;
+        }
+
+        @Override
+        void update() {
+            trail.addFirst(new double[] { x, y });
+            if (trail.size() > 12)
+                trail.removeLast();
+            if (speed > MIN_SPEED) {
+                speed = Math.max(MIN_SPEED, speed * DECEL);
+                double len = Math.sqrt(dx * dx + dy * dy);
+                if (len > 0.001) {
+                    dx = (dx / len) * speed;
+                    dy = (dy / len) * speed;
+                }
+            }
+            x += dx;
+            y += dy;
+        }
+
+        @Override
+        void draw(Graphics2D g2) {
+            float speedFrac = (float) Math.min(1.0, speed / INITIAL_SPEED);
+            double angle = Math.atan2(dy, dx);
+
+            // ── Trail ──
+            int ti = 0;
+            for (double[] tp : trail) {
+                float ta = (float) (trail.size() - ti) / trail.size();
+                g2.setColor(new Color(255, 80, 80, (int) (60 * ta * ta)));
+                int tsz = Math.max(1, (int) (4 * ta));
+                g2.fillOval((int) tp[0] - tsz / 2, (int) tp[1] - tsz / 2, tsz, tsz);
+                ti++;
+            }
+
+            // ── Draw knife rotated along travel direction ──
+            Graphics2D g3 = (Graphics2D) g2.create();
+            g3.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+            g3.translate((int) x, (int) y);
+            g3.rotate(angle + Math.PI / 2);
+
+            // Glow around whole knife
+            g3.setColor(new Color(255, 200, 200, (int) (60 * speedFrac)));
+            g3.fillRoundRect(-7, -18, 14, 36, 6, 6);
+
+            // ── Blade — glowing white metal ──
+            int[] bladeX = { 0, -4, -3, 0, 3, 4 };
+            int[] bladeY = { -18, -4, 8, 12, 8, -4 };
+            g3.setColor(new Color(220, 230, 255, 230));
+            g3.fillPolygon(bladeX, bladeY, 6);
+
+            // Metal blade glow — pulsing white-blue
+            g3.setColor(new Color(180, 220, 255, (int) (140 * speedFrac)));
+            g3.setStroke(new BasicStroke(3f));
+            g3.drawPolygon(bladeX, bladeY, 6);
+            g3.setStroke(new BasicStroke(1));
+            g3.setColor(new Color(255, 255, 255, (int) (100 * speedFrac)));
+            g3.fillPolygon(bladeX, bladeY, 6);
+
+            // Sharp edge highlight
+            g3.setColor(new Color(255, 255, 255, 240));
+            g3.setStroke(new BasicStroke(0.8f));
+            g3.drawLine(-3, -14, -4, 6);
+
+            // Blade shine shimmer
+            g3.setColor(new Color(180, 210, 255, (int) (160 * speedFrac)));
+            g3.fillPolygon(
+                    new int[] { -1, -3, -2 },
+                    new int[] { -18, -6, -6 }, 3);
+
+            // ── Guard — dark red crossguard ──
+            g3.setColor(new Color(180, 30, 30));
+            g3.fillRoundRect(-6, 10, 12, 4, 3, 3);
+            g3.setColor(new Color(220, 80, 80, 180));
+            g3.fillRect(-5, 10, 10, 2);
+
+            // ── Handle — red wrapped grip ──
+            g3.setColor(new Color(160, 20, 20));
+            g3.fillRoundRect(-3, 14, 6, 14, 3, 3);
+            // Wrap bands
+            g3.setColor(new Color(220, 60, 60, 200));
+            for (int wrap = 0; wrap < 4; wrap++) {
+                g3.setColor(new Color(220, 60, 60, 200));
+                g3.fillRect(-3, 15 + wrap * 3, 6, 2);
+            }
+            // Handle shine
+            g3.setColor(new Color(255, 120, 120, 120));
+            g3.fillRect(-2, 14, 2, 12);
+
+            // ── Pommel ──
+            g3.setColor(new Color(180, 30, 30));
+            g3.fillOval(-4, 26, 8, 6);
+            g3.setColor(new Color(220, 80, 80, 180));
+            g3.fillOval(-2, 27, 4, 3);
+
+            // Blade outline
+            g3.setColor(new Color(160, 180, 220, 180));
+            g3.setStroke(new BasicStroke(0.8f));
+            g3.drawPolygon(bladeX, bladeY, 6);
+
+            g3.setStroke(new BasicStroke(1));
+            g3.dispose();
+        }
+    }
+
+    // Kitsune fox fire — slow drifting green-white orb, lingers as a hazard
+    class KitsuneFoxFireBullet extends Bullet {
+        int age = 0;
+        static final int LIFE = 280;
+
+        KitsuneFoxFireBullet(double x, double y, double dx, double dy) {
+            super(x, y, dx, dy, new Color(255, 140, 140), true);
+            this.size = 4;
+        }
+
+        @Override
+        void update() {
+            age++;
+            // Gently drift — slight wobble
+            dx += (Math.random() - 0.5) * 0.06;
+            dy += (Math.random() - 0.5) * 0.06;
+            // Cap speed
+            double spd2 = Math.sqrt(dx * dx + dy * dy);
+            if (spd2 > 1.4) {
+                dx *= 1.4 / spd2;
+                dy *= 1.4 / spd2;
+            }
+            x += dx;
+            y += dy;
+            // Die after lifetime
+            if (age > LIFE) {
+                y = -999;
+            }
+        }
+
+        @Override
+
+        void draw(Graphics2D g2) {
+            if (age > LIFE)
+                return;
+            float life2 = 1f - (float) age / LIFE;
+            float pulse = (float) (0.6 + 0.4 * Math.sin(age * 0.18));
+            double angle = Math.atan2(dy, dx);
+
+            Graphics2D g3 = (Graphics2D) g2.create();
+            g3.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g3.translate((int) x, (int) y);
+            g3.rotate(angle + Math.PI / 2);
+
+            // Outer glow — fox fire green tint
+            g3.setColor(new Color(180, 255, 180, (int) (40 * pulse * life2)));
+            g3.fillRoundRect(-7, -18, 14, 36, 6, 6);
+
+            // Blade — glowing white-green metal
+            int[] bladeX = { 0, -4, -3, 0, 3, 4 };
+            int[] bladeY = { -18, -4, 8, 12, 8, -4 };
+            g3.setColor(new Color(200, 255, 210, (int) (230 * life2)));
+            g3.fillPolygon(bladeX, bladeY, 6);
+
+            // Fuller groove
+            g3.setColor(new Color(255, 255, 255, (int) (200 * pulse * life2)));
+            g3.fillRect(-1, -16, 2, 22);
+
+            // Sharp edge highlight
+            g3.setColor(new Color(255, 255, 255, (int) (240 * life2)));
+            g3.setStroke(new BasicStroke(0.8f));
+            g3.drawLine(-3, -14, -4, 6);
+
+            // Blade shimmer — green fox fire glow
+            g3.setColor(new Color(120, 255, 160, (int) (160 * pulse * life2)));
+            g3.fillPolygon(new int[] { -1, -3, -2 }, new int[] { -18, -6, -6 }, 3);
+
+            // Guard
+            g3.setColor(new Color(180, 30, 30));
+            g3.fillRoundRect(-6, 10, 12, 4, 3, 3);
+            g3.setColor(new Color(220, 80, 80, 180));
+            g3.fillRect(-5, 10, 10, 2);
+
+            // Handle
+            g3.setColor(new Color(160, 20, 20));
+            g3.fillRoundRect(-3, 14, 6, 14, 3, 3);
+            for (int wrap = 0; wrap < 4; wrap++) {
+                g3.setColor(new Color(220, 60, 60, 200));
+                g3.fillRect(-3, 15 + wrap * 3, 6, 2);
+            }
+            // Pommel
+            g3.setColor(new Color(180, 30, 30));
+            g3.fillOval(-4, 26, 8, 6);
+
+            // Blade outline
+            g3.setColor(new Color(160, 255, 200, (int) (180 * life2)));
+            g3.setStroke(new BasicStroke(0.8f));
+            g3.drawPolygon(bladeX, bladeY, 6);
+
+            g3.setStroke(new BasicStroke(1));
+            g3.dispose();
         }
     }
 
