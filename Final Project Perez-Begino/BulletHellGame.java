@@ -124,7 +124,9 @@ public class BulletHellGame extends JPanel
     private boolean novaLaserActive = false;
     private int novaLaserTimer = 0;
     private int novaCooldownTimer = 0;
+
     private int novaBeamX1, novaBeamY1, novaBeamX2, novaBeamY2;
+    private double novaAccumulatedDmg = 0;
     private final ArrayList<NovaParticle> novaParticles = new ArrayList<>();
 
     // Phantom
@@ -143,6 +145,7 @@ public class BulletHellGame extends JPanel
     private final ArrayList<Snake> snakes = new ArrayList<>();
     private int viperFireCD = 0;
     private int viperHitCount = 0;
+    private final ArrayList<DamageIndicator> damageIndicators = new ArrayList<>();
     private int viperPoisonStacks = 0;
     private int viperPoisonTimer = 0;
     private int viperPoisonTickTimer = 0;
@@ -505,11 +508,18 @@ public class BulletHellGame extends JPanel
             if (laserHitsBoss(boss.getBounds())) {
                 boss.hp -= 1.5;
                 score += 6;
+                novaAccumulatedDmg += 1.5;
                 if (boss.hp <= 0 && boss.alive) {
-                    boss.alive = false; // mark immediately to prevent re-entry
+                    boss.alive = false;
                     bossDefeated();
                 }
             }
+        } else if (!novaLaserActive && novaAccumulatedDmg > 0) {
+            damageIndicators.add(new DamageIndicator(
+                    boss.x + boss.width / 2,
+                    boss.y + boss.height / 2,
+                    "-" + (int) novaAccumulatedDmg, new Color(100, 180, 255)));
+            novaAccumulatedDmg = 0;
         }
 
         // Player bullets vs boss
@@ -524,6 +534,10 @@ public class BulletHellGame extends JPanel
                 playerBullets.remove(i);
                 boss.hp--;
                 score += 10;
+                damageIndicators.add(new DamageIndicator(
+                        boss.x + rand.nextInt(boss.width),
+                        boss.y + rand.nextInt(boss.height / 2),
+                        "-1", new Color(255, 220, 80)));
                 if (rand.nextInt(20) == 0) {
                     int dt = rand.nextInt(PU_COUNT);
                     boolean dup = (dt == PU_DOUBLE_SHOT && doubleShot) || (dt == PU_SHIELD && hasShield);
@@ -609,9 +623,13 @@ public class BulletHellGame extends JPanel
                 continue;
             }
             if (!bossTransition && boss.alive && boss.getBounds().intersects(s.getBounds())) {
-                boss.hp -= 1.5;
+                boss.hp -= 2;
                 score += 15;
                 s.dead = true;
+                damageIndicators.add(new DamageIndicator(
+                        boss.x + rand.nextInt(boss.width),
+                        boss.y + rand.nextInt(boss.height / 2),
+                        "-2", new Color(0, 255, 100)));
                 viperHitCount++;
                 if (viperHitCount >= 5) {
                     viperHitCount = 0;
@@ -658,6 +676,10 @@ public class BulletHellGame extends JPanel
         while (ep.hasNext())
             if (!ep.next().update())
                 ep.remove();
+        Iterator<DamageIndicator> di = damageIndicators.iterator();
+        while (di.hasNext())
+            if (!di.next().update())
+                di.remove();
 
         if (viperPoisonTimer > 0 && !bossTransition && boss.alive) {
             viperPoisonTimer--;
@@ -669,6 +691,10 @@ public class BulletHellGame extends JPanel
                 score += (int) (dmg / 2);
                 pickupMsg = "POISON TICK -" + viperPoisonStacks * 3 + "%!";
                 pickupTimer = 60;
+                damageIndicators.add(new DamageIndicator(
+                        boss.x + boss.width / 2 - 20,
+                        boss.y + boss.height / 2,
+                        "-" + (int) dmg + " ☠", new Color(240, 210, 255)));
                 if (boss.hp <= 0 && boss.alive) {
                     boss.alive = false;
                     bossDefeated();
@@ -1862,6 +1888,8 @@ public class BulletHellGame extends JPanel
 
         for (ExplosionParticle ep : explosionParticles)
             ep.draw(g2);
+        for (DamageIndicator di : damageIndicators)
+            di.draw(g2);
 
         // Sentinel orb FX
         if (selectedClass == CLASS_SENTINEL && player.alive) {
@@ -1981,6 +2009,10 @@ public class BulletHellGame extends JPanel
             g2.setFont(new Font("Arial", Font.BOLD, 11));
             String bossName = boss.getBossName();
             g2.drawString(bossName, bx + bw / 2 - g2.getFontMetrics().stringWidth(bossName) / 2, HEIGHT - 14);
+            g2.setFont(new Font("Arial", Font.BOLD, 10));
+            g2.setColor(new Color(255, 255, 255, 180));
+            String hpText = (int) boss.hp + " / " + (int) boss.maxHp;
+            g2.drawString(hpText, bx + bw / 2 - g2.getFontMetrics().stringWidth(hpText) / 2, HEIGHT - 28);
         }
 
         drawPowerupLegend(g2);
@@ -2683,8 +2715,8 @@ public class BulletHellGame extends JPanel
             drawEngineTrail(g2, frame, pulse);
             if (viperPoisonStacks > 0) {
                 // purple tint overlay
-                float poisonAlpha = Math.min(0.6f, viperPoisonStacks * 0.2f);
-                g2.setColor(new Color(120, 0, 180, (int) (poisonAlpha * 180)));
+                float poisonAlpha = viperPoisonStacks * 0.08f;
+                g2.setColor(new Color(120, 0, 180, (int) (poisonAlpha * 80)));
                 g2.fillRoundRect((int) bx - 5, (int) by - 5, width + 10, height + 10, 16, 16);
                 // smoke particles
                 Random pr = new Random(frame * 7 + (int) bx);
@@ -3141,6 +3173,32 @@ public class BulletHellGame extends JPanel
             int alpha = (int) (220 * frac), sz = Math.max(1, (int) (5 * frac));
             g2.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
             g2.fillOval((int) x - sz / 2, (int) y - sz / 2, sz, sz);
+        }
+    }
+
+    class DamageIndicator {
+        double x, y;
+        String text;
+        Color color;
+        int life = 50;
+
+        DamageIndicator(double x, double y, String text, Color color) {
+            this.x = x;
+            this.y = y;
+            this.text = text;
+            this.color = color;
+        }
+
+        boolean update() {
+            y -= 1.2;
+            return --life > 0;
+        }
+
+        void draw(Graphics2D g2) {
+            float f = (float) life / 50f;
+            g2.setFont(new Font("Arial", Font.BOLD, 13));
+            g2.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), (int) (220 * f)));
+            g2.drawString(text, (int) x, (int) y);
         }
     }
 
