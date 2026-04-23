@@ -20,7 +20,7 @@ public class BulletHellGame extends JPanel
     static final int STATE_CLASS_SEL = 5;
     static final int STATE_PLAYING = 3;
     static final int STATE_GAME_OVER = 4;
-    static final int STATE_SHOP      = 7;
+    static final int STATE_SHOP = 7;
 
     static final int FIRE_MOUSE = 0;
     static final int FIRE_SPACE = 1;
@@ -67,84 +67,84 @@ public class BulletHellGame extends JPanel
     static final int SCENE_ALIEN = 3;
     static final int SCENE_ASTEROID = 4;
     static final int SCENE_NEBULA = 5;
-    static final int SCENE_VOID   = 6;
-    static final int SCENE_STORM  = 7;
-    static final int SCENE_ICE    = 8;
+    static final int SCENE_VOID = 6;
+    static final int SCENE_STORM = 7;
+    static final int SCENE_ICE = 8;
     static final int SCENE_JUNGLE = 9;
-    static final int SCENE_COUNT  = 10;
+    static final int SCENE_COUNT = 10;
     private int currentScene = SCENE_SPACE;
 
     // ── Shop ─────────────────────────────────────────────────────────
     // These are SHOP-ONLY permanent upgrades — never drop from boss
-    static final int SHOP_EXTRA_LIFE  = 0;  // +1 life (instant)
-    static final int SHOP_SPEED_BOOST = 1;  // move faster — permanent
-    static final int SHOP_RAPID_FIRE  = 2;  // 2× fire rate — permanent
-    static final int SHOP_BULLET_TIME = 3;  // enemy bullets 50% slower — permanent
-    static final int SHOP_SCORE_RUSH  = 4;  // 2× score — permanent
-    static final int SHOP_PHASE_SHIFT = 5;  // invincible frame on dash — permanent
-    static final int SHOP_NUKE        = 6;  // clear all bullets (instant)
-    static final int SHOP_REPAIR      = 7;  // restore 1 HP (instant)
-    static final int SHOP_POOL_SIZE   = 8;
-    static final int SHOP_OFFERED     = 3;
+    static final int SHOP_EXTRA_LIFE = 0; // +1 life (instant)
+    static final int SHOP_SPEED_BOOST = 1; // move faster — permanent
+    static final int SHOP_RAPID_FIRE = 2; // 2× fire rate — permanent
+    static final int SHOP_BULLET_TIME = 3; // enemy bullets 50% slower — permanent
+    static final int SHOP_SCORE_RUSH = 4; // 2× score — permanent
+    static final int SHOP_PHASE_SHIFT = 5; // invincible frame on dash — permanent
+    static final int SHOP_NUKE = 6; // clear all bullets (instant)
+    static final int SHOP_REPAIR = 7; // restore 1 HP (instant)
+    static final int SHOP_POOL_SIZE = 8;
+    static final int SHOP_OFFERED = 3;
 
     static final String[] SHOP_NAMES = {
-        "BLOOD PACT",     // extra life
-        "AETHER STRIDE",  // speed
-        "FRENZY CORE",    // rapid fire
-        "CLOCK FRACTURE", // bullet time
-        "GOLD RUSH",      // score rush
-        "GHOST WALK",     // phase shift / invincibility
-        "SINGULARITY",    // nuke
-        "NANO MEND"       // repair
+            "BLOOD PACT", // extra life
+            "AETHER STRIDE", // speed
+            "FRENZY CORE", // rapid fire
+            "CLOCK FRACTURE", // bullet time
+            "GOLD RUSH", // score rush
+            "GHOST WALK", // phase shift / invincibility
+            "SINGULARITY", // nuke
+            "NANO MEND" // repair
     };
     static final String[] SHOP_DESCS = {
-        "+1 life permanently",
-        "Move speed +2 forever",
-        "2× fire rate forever",
-        "Enemy bullets half speed forever",
-        "2× score per kill forever",
-        "Brief invincibility on hit forever",
-        "Clears all enemy bullets",
-        "Restore 1 HP"
+            "+1 life permanently",
+            "Move speed +2 forever",
+            "2× fire rate forever",
+            "Enemy bullets half speed forever",
+            "2× score per kill forever",
+            "Brief invincibility on hit forever",
+            "Clears all enemy bullets",
+            "Restore 1 HP"
     };
     static final String[] SHOP_FLAVORS = {
-        "\"Death? Not today.\"",
-        "\"They can't hit what they can't see.\"",
-        "\"Blink and you miss it.\"",
-        "\"Time bends. You don't.\"",
-        "\"Every kill, doubled.\"",
-        "\"You were never here.\"",
-        "\"Everything. Gone.\"",
-        "\"Patching wounds mid-war.\""
+            "\"Death? Not today.\"",
+            "\"They can't hit what they can't see.\"",
+            "\"Blink and you miss it.\"",
+            "\"Time bends. You don't.\"",
+            "\"Every kill, doubled.\"",
+            "\"You were never here.\"",
+            "\"Everything. Gone.\"",
+            "\"Patching wounds mid-war.\""
     };
     // 0=Common 1=Rare 2=Legendary
-    static final int[] SHOP_RARITY  = {1, 0, 1, 2, 1, 2, 1, 0};
-    static final String[] RARITY_LABEL = {"COMMON", "RARE", "LEGENDARY"};
-    static final Color[]  RARITY_COLOR = {
-        new Color(160, 160, 180),
-        new Color(80,  160, 255),
-        new Color(255, 180,   0)
+    static final int[] SHOP_RARITY = { 1, 0, 1, 2, 1, 2, 1, 0 };
+    static final String[] RARITY_LABEL = { "COMMON", "RARE", "LEGENDARY" };
+    static final Color[] RARITY_COLOR = {
+            new Color(160, 160, 180),
+            new Color(80, 160, 255),
+            new Color(255, 180, 0)
     };
-    static final int[] SHOP_COSTS = {500, 150, 280, 500, 250, 550, 350, 400};
+    static final int[] SHOP_COSTS = { 500, 150, 280, 500, 250, 550, 350, 400 };
     // 3 large cards centered in a single row
-    private static final int SC_W=172, SC_H=150, SC_GAP=18;
-    private static final int SC_Y=210;
-    private static final int SC_X0 = WIDTH/2 - (SC_W*3+SC_GAP*2)/2;
+    private static final int SC_W = 172, SC_H = 150, SC_GAP = 18;
+    private static final int SC_Y = 210;
+    private static final int SC_X0 = WIDTH / 2 - (SC_W * 3 + SC_GAP * 2) / 2;
     private final Rectangle[] btnShopItems = {
-        new Rectangle(SC_X0,              SC_Y, SC_W, SC_H),
-        new Rectangle(SC_X0+SC_W+SC_GAP,  SC_Y, SC_W, SC_H),
-        new Rectangle(SC_X0+(SC_W+SC_GAP)*2, SC_Y, SC_W, SC_H),
+            new Rectangle(SC_X0, SC_Y, SC_W, SC_H),
+            new Rectangle(SC_X0 + SC_W + SC_GAP, SC_Y, SC_W, SC_H),
+            new Rectangle(SC_X0 + (SC_W + SC_GAP) * 2, SC_Y, SC_W, SC_H),
     };
-    private final boolean[] shopBought      = new boolean[SHOP_OFFERED]; // per-slot
-    private int[]           shopOfferedItems = new int[]{0,1,2};          // filled in openShop()
-    private final Rectangle btnShopContinue = new Rectangle(WIDTH/2-110, 400, 220, 54);
+    private final boolean[] shopBought = new boolean[SHOP_OFFERED]; // per-slot
+    private int[] shopOfferedItems = new int[] { 0, 1, 2 }; // filled in openShop()
+    private final Rectangle btnShopContinue = new Rectangle(WIDTH / 2 - 110, 400, 220, 54);
     // ── Shop permanent upgrades (active until game over) ─────────────
     private boolean shopSpeedBoost = false;
-    private boolean shopRapidFire  = false;
+    private boolean shopRapidFire = false;
     private boolean shopBulletTime = false;
-    private boolean shopScoreRush  = false;
-    private boolean shopPhaseShift = false;  // brief invincibility frames on hit
-    private int     powerUpDropCD  = 0;
+    private boolean shopScoreRush = false;
+    private boolean shopPhaseShift = false; // brief invincibility frames on hit
+    private int powerUpDropCD = 0;
     private int sceneTransAlpha = 0;
     private final int[] s1x = new int[60], s1y = new int[60], s1b = new int[60];
     private final int[] s2x = new int[35], s2y = new int[35], s2b = new int[35];
@@ -624,7 +624,8 @@ public class BulletHellGame extends JPanel
                         powerUpDropCD = 180; // ~3 second gap between drops
                     }
                 }
-                if (powerUpDropCD > 0) powerUpDropCD--;
+                if (powerUpDropCD > 0)
+                    powerUpDropCD--;
                 if (boss.hp <= 0 && boss.alive) {
                     boss.alive = false; // mark immediately before calling bossDefeated
                     bossDefeated();
@@ -637,13 +638,17 @@ public class BulletHellGame extends JPanel
         for (int i = enemyBullets.size() - 1; i >= 0; i--) {
             Bullet b = enemyBullets.get(i);
             // Bullet Time: enemy bullets move at ~55% speed (skip update on odd frames)
-            if (!shopBulletTime || frameCount % 2 == 0) b.update();
+            if (!shopBulletTime || frameCount % 2 == 0)
+                b.update();
             if (b.y > HEIGHT + 10 || b.x < -10 || b.x > WIDTH + 10) {
                 enemyBullets.remove(i);
                 continue;
             }
-            if (player.alive && player.getHitbox().intersects(b.getBounds())) {
-                if (shopPhaseShift) { enemyBullets.remove(i); continue; } // invincible
+            if (player.alive && !phantomInvinc && player.getHitbox().intersects(b.getBounds())) {
+                if (shopPhaseShift) {
+                    enemyBullets.remove(i);
+                    continue;
+                } // invincible
                 if (hasShield) {
                     enemyBullets.remove(i);
                     hasShield = false;
@@ -797,52 +802,84 @@ public class BulletHellGame extends JPanel
         score += 500 + wave * 50;
         wave++;
         bossTransition = true;
-        viperHitCount = 0; viperPoisonStacks = 0; viperPoisonTimer = 0; viperPoisonTickTimer = 0;
+        viperHitCount = 0;
+        viperPoisonStacks = 0;
+        viperPoisonTimer = 0;
+        viperPoisonTickTimer = 0;
         novaLaserActive = false;
-        playerBullets.clear(); enemyBullets.clear();
+        playerBullets.clear();
+        enemyBullets.clear();
         Timer shopDelay = new Timer(1500, ev -> openShop());
-        shopDelay.setRepeats(false); shopDelay.start();
+        shopDelay.setRepeats(false);
+        shopDelay.start();
     }
 
     private void openShop() {
         // Randomly pick 3 distinct items from the full pool of 10
         java.util.List<Integer> pool = new java.util.ArrayList<>();
-        for (int i = 0; i < SHOP_POOL_SIZE; i++) pool.add(i);
+        for (int i = 0; i < SHOP_POOL_SIZE; i++)
+            pool.add(i);
         java.util.Collections.shuffle(pool, rand);
         shopOfferedItems[0] = pool.get(0);
         shopOfferedItems[1] = pool.get(1);
         shopOfferedItems[2] = pool.get(2);
-        for (int i = 0; i < SHOP_OFFERED; i++) shopBought[i] = false;
+        for (int i = 0; i < SHOP_OFFERED; i++)
+            shopBought[i] = false;
         gameState = STATE_SHOP;
     }
 
     private void buyShopItem(int slot) {
-        if (slot < 0 || slot >= SHOP_OFFERED) return;
-        if (shopBought[slot]) return;
-        int idx = shopOfferedItems[slot];          // real item type from the pool
-        if (score < SHOP_COSTS[idx]) return;
+        if (slot < 0 || slot >= SHOP_OFFERED)
+            return;
+        if (shopBought[slot])
+            return;
+        int idx = shopOfferedItems[slot]; // real item type from the pool
+        if (score < SHOP_COSTS[idx])
+            return;
         score -= SHOP_COSTS[idx];
         shopBought[slot] = true;
         switch (idx) {
             case SHOP_EXTRA_LIFE:
-                player.lives++; pickupMsg = "BLOOD PACT — +1 LIFE!"; break;
+                player.lives++;
+                pickupMsg = "BLOOD PACT — +1 LIFE!";
+                break;
             case SHOP_SPEED_BOOST:
-                shopSpeedBoost = true; pickupMsg = "AETHER STRIDE — SPEED UP!"; break;
+                shopSpeedBoost = true;
+                pickupMsg = "AETHER STRIDE — SPEED UP!";
+                break;
             case SHOP_RAPID_FIRE:
-                shopRapidFire  = true; pickupMsg = "FRENZY CORE — RAPID FIRE!"; break;
+                shopRapidFire = true;
+                pickupMsg = "FRENZY CORE — RAPID FIRE!";
+                break;
             case SHOP_BULLET_TIME:
-                shopBulletTime = true; pickupMsg = "CLOCK FRACTURE — SLOW BULLETS!"; break;
+                shopBulletTime = true;
+                pickupMsg = "CLOCK FRACTURE — SLOW BULLETS!";
+                break;
             case SHOP_SCORE_RUSH:
-                shopScoreRush  = true; pickupMsg = "GOLD RUSH — 2x SCORE!"; break;
+                shopScoreRush = true;
+                pickupMsg = "GOLD RUSH — 2x SCORE!";
+                break;
             case SHOP_PHASE_SHIFT:
-                shopPhaseShift = true; pickupMsg = "GHOST WALK — INVINCIBILITY!"; break;
+                shopPhaseShift = true;
+                pickupMsg = "GHOST WALK — INVINCIBILITY!";
+                break;
             case SHOP_NUKE:
-                enemyBullets.clear(); score += 80; shakeTimer = 16; shakeIntensity = 5;
-                pickupMsg = "SINGULARITY — BULLETS ERASED!"; break;
+                enemyBullets.clear();
+                score += 80;
+                shakeTimer = 16;
+                shakeIntensity = 5;
+                pickupMsg = "SINGULARITY — BULLETS ERASED!";
+                break;
             case SHOP_REPAIR:
-                int maxLives = new int[]{5,3,2}[difficulty];
-                if (player.lives < maxLives) { player.lives++; pickupMsg = "NANO MEND — HP RESTORED!"; }
-                else { score += SHOP_COSTS[idx]; shopBought[slot] = false; pickupMsg = "Already at full HP!"; }
+                int maxLives = new int[] { 5, 3, 2 }[difficulty];
+                if (player.lives < maxLives) {
+                    player.lives++;
+                    pickupMsg = "NANO MEND — HP RESTORED!";
+                } else {
+                    score += SHOP_COSTS[idx];
+                    shopBought[slot] = false;
+                    pickupMsg = "Already at full HP!";
+                }
                 break;
         }
         pickupTimer = 90;
@@ -1114,70 +1151,116 @@ public class BulletHellGame extends JPanel
             return;
         int cx = boss.x + boss.width / 2, cy = boss.y + boss.height / 2;
         double dm = new double[] { 0.65, 0.9, 1.25 }[difficulty];
+        double spd = 2.2 * dm;
 
-        double speedScale, countScale;
-        int ringInterval, aimedInterval, spiralInterval;
-        if (wave <= 5) {
-            speedScale = 0.55;
-            countScale = 0.45;
-            ringInterval = 130;
-            aimedInterval = 90;
-            spiralInterval = 22;
-        } else if (wave <= 10) {
-            speedScale = 0.75;
-            countScale = 0.70;
-            ringInterval = 100;
-            aimedInterval = 55;
-            spiralInterval = 14;
-        } else {
-            speedScale = 1.0;
-            countScale = 1.0;
-            ringInterval = 80;
-            aimedInterval = 35;
-            spiralInterval = 8;
+        // Wave 1-2: simple ring
+        if (wave <= 2) {
+            if (frameCount % 120 == 0) {
+                int cnt = 8;
+                for (int i = 0; i < cnt; i++) {
+                    double a = 2 * Math.PI * i / cnt;
+                    enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, Color.RED, true));
+                }
+            }
+        }
+        // Wave 3-4: alternating double rings (offset by half)
+        else if (wave <= 4) {
+            if (frameCount % 90 == 0) {
+                int cnt = 10;
+                double offset = (frameCount / 90 % 2) * (Math.PI / cnt);
+                for (int i = 0; i < cnt; i++) {
+                    double a = 2 * Math.PI * i / cnt + offset;
+                    enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, Color.RED, true));
+                }
+            }
+        }
+        // Wave 5-6: spinning cross + aimed shot
+        else if (wave <= 6) {
+            if (frameCount % 70 == 0) {
+                for (int i = 0; i < 4; i++) {
+                    double a = Math.PI / 2 * i + Math.toRadians(frameCount * 1.5);
+                    enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, Color.ORANGE, true));
+                }
+            }
+            if (frameCount % 110 == 0) {
+                double dx = player.x - cx, dy2 = player.y - cy, len = Math.sqrt(dx * dx + dy2 * dy2);
+                if (len > 0)
+                    enemyBullets.add(new Bullet(cx, cy, dx / len * spd, dy2 / len * spd, Color.YELLOW, true));
+            }
+        }
+        // Wave 7-8: spiral pair + aimed burst (3 spread shots)
+        else if (wave <= 8) {
+            if (frameCount % 14 == 0) {
+                double a = Math.toRadians(frameCount * 4);
+                enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, Color.MAGENTA, true));
+                enemyBullets.add(new Bullet(cx, cy, -Math.cos(a) * spd, -Math.sin(a) * spd, Color.MAGENTA, true));
+            }
+            if (frameCount % 100 == 0) {
+                double dx = player.x - cx, dy2 = player.y - cy, len = Math.sqrt(dx * dx + dy2 * dy2);
+                if (len > 0) {
+                    double base = Math.atan2(dy2, dx);
+                    for (int s = -1; s <= 1; s++)
+                        enemyBullets.add(new Bullet(cx, cy, Math.cos(base + s * 0.22) * spd,
+                                Math.sin(base + s * 0.22) * spd, Color.ORANGE, true));
+                }
+            }
+        }
+        // Wave 9-10: flower pattern (3 rings at staggered intervals) + aimed
+        else if (wave <= 10) {
+            if (frameCount % 30 == 0) {
+                int ring = (frameCount / 30) % 3;
+                int cnt = 8 + ring * 2;
+                double rot = Math.toRadians(ring * 20 + frameCount * 0.5);
+                for (int i = 0; i < cnt; i++) {
+                    double a = 2 * Math.PI * i / cnt + rot;
+                    enemyBullets.add(
+                            new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, new Color(255, 100, 200), true));
+                }
+            }
+            if (frameCount % 80 == 0) {
+                double dx = player.x - cx, dy2 = player.y - cy, len = Math.sqrt(dx * dx + dy2 * dy2);
+                if (len > 0) {
+                    double base = Math.atan2(dy2, dx);
+                    for (int s = -1; s <= 1; s++)
+                        enemyBullets.add(new Bullet(cx, cy, Math.cos(base + s * 0.18) * spd,
+                                Math.sin(base + s * 0.18) * spd, Color.YELLOW, true));
+                }
+            }
+        }
+        // Wave 11+: dense symmetric mandala + rotating cross + aimed 5-way spread
+        else {
+            if (frameCount % 22 == 0) {
+                double rot = Math.toRadians(frameCount * 2);
+                int cnt = 12;
+                for (int i = 0; i < cnt; i++) {
+                    double a = 2 * Math.PI * i / cnt + rot;
+                    enemyBullets.add(
+                            new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, new Color(255, 80, 80), true));
+                }
+            }
+            if (frameCount % 55 == 0) {
+                for (int i = 0; i < 6; i++) {
+                    double a = Math.PI / 3 * i + Math.toRadians(frameCount * 1.2);
+                    enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, Color.CYAN, true));
+                }
+            }
+            if (frameCount % 90 == 0) {
+                double dx = player.x - cx, dy2 = player.y - cy, len = Math.sqrt(dx * dx + dy2 * dy2);
+                if (len > 0) {
+                    double base = Math.atan2(dy2, dx);
+                    for (int s = -2; s <= 2; s++)
+                        enemyBullets.add(new Bullet(cx, cy, Math.cos(base + s * 0.18) * spd,
+                                Math.sin(base + s * 0.18) * spd, Color.ORANGE, true));
+                }
+            }
         }
 
-        if (!boss.isApex && frameCount % ringInterval == 0) {
-            int cnt = (int) Math.max(4, Math.min(8 + wave * 2, 20) * countScale);
-            for (int i = 0; i < cnt; i++) {
-                double a = 2 * Math.PI * i / cnt + Math.toRadians(frameCount * 2);
-                double s = (2.2 + wave * 0.15) * dm * speedScale;
-                enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * s, Math.sin(a) * s, Color.RED, true));
-            }
-        }
-        if (!boss.isApex && wave >= 2 && frameCount % aimedInterval == 0) {
-            double dx = player.x - cx, dy2 = player.y - cy, len = Math.sqrt(dx * dx + dy2 * dy2);
-            if (len > 0) {
-                double s = 3.0 * dm * speedScale;
-                enemyBullets.add(new Bullet(cx, cy, dx / len * s, dy2 / len * s, Color.ORANGE, true));
-            }
-        }
-        if (!boss.isApex && wave >= 3 && frameCount % spiralInterval == 0) {
-            double a = Math.toRadians(frameCount * 5), s = 2.5 * dm * speedScale;
-            enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * s, Math.sin(a) * s, Color.MAGENTA, true));
-            enemyBullets.add(new Bullet(cx, cy, -Math.cos(a) * s, -Math.sin(a) * s, Color.MAGENTA, true));
-        }
-        if (!boss.isApex && wave >= 4 && wave > 5 && frameCount % 20 == 0) {
-            for (int i = 0; i < 4; i++) {
-                double a = Math.PI / 2 * i + Math.toRadians(frameCount * 2);
-                double s = 3.0 * dm * speedScale;
-                enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * s, Math.sin(a) * s, new Color(255, 80, 0), true));
-            }
-        }
-        if (!boss.isApex && wave >= 5 && wave > 5 && frameCount % 55 == 0) {
-            for (int i = 0; i < 14; i++) {
-                double a = 2 * Math.PI * i / 14 + Math.toRadians(frameCount);
-                double s = 3.5 * dm * speedScale;
-                enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * s, Math.sin(a) * s, Color.YELLOW, true));
-            }
-        }
         if (boss.isApex) {
             if (frameCount % 80 == 0) {
-                int cnt = (int) Math.max(8, Math.min(10 + wave, 18) * countScale);
-                ;
+                int cnt = (int) Math.max(8, Math.min(10 + wave, 18) * 0.7);
                 for (int i = 0; i < cnt; i++) {
                     double a = 2 * Math.PI * i / cnt + Math.toRadians(frameCount * 3);
-                    double s = 1.6 * dm * speedScale;
+                    double s = 1.6 * dm;
                     enemyBullets
                             .add(new Bullet(cx, cy, Math.cos(a) * s, Math.sin(a) * s, new Color(255, 100, 200), true));
                 }
@@ -1185,7 +1268,7 @@ public class BulletHellGame extends JPanel
             if (frameCount % 30 == 0) {
                 double dx = player.x - cx, dy2 = player.y - cy, len = Math.sqrt(dx * dx + dy2 * dy2);
                 if (len > 0) {
-                    double s = 2.2 * dm * speedScale;
+                    double s = 2.2 * dm;
                     enemyBullets.add(new Bullet(cx, cy, dx / len * s, dy2 / len * s, new Color(255, 60, 180), true));
                 }
             }
@@ -1737,564 +1820,626 @@ public class BulletHellGame extends JPanel
     // ═══════════════════════════════════════════════════════════════════
     // Accent colour for each pool item (index 0-9)
     private static final Color[] SHOP_ACCENT = {
-        new Color( 60, 220,  80),  // 0 BLOOD PACT     – green
-        new Color(255, 200,   0),  // 1 AETHER STRIDE  – yellow
-        new Color(255, 130,  30),  // 2 FRENZY CORE    – orange
-        new Color(  0, 200, 180),  // 3 CLOCK FRACTURE – teal
-        new Color(255, 220,  80),  // 4 GOLD RUSH      – gold
-        new Color(160,   0, 255),  // 5 GHOST WALK     – violet
-        new Color(255,  60,  60),  // 6 SINGULARITY    – red
-        new Color(200,  80, 255),  // 7 NANO MEND      – purple
+            new Color(60, 220, 80), // 0 BLOOD PACT – green
+            new Color(255, 200, 0), // 1 AETHER STRIDE – yellow
+            new Color(255, 130, 30), // 2 FRENZY CORE – orange
+            new Color(0, 200, 180), // 3 CLOCK FRACTURE – teal
+            new Color(255, 220, 80), // 4 GOLD RUSH – gold
+            new Color(160, 0, 255), // 5 GHOST WALK – violet
+            new Color(255, 60, 60), // 6 SINGULARITY – red
+            new Color(200, 80, 255), // 7 NANO MEND – purple
     };
 
     private void drawShop(Graphics2D g2) {
         // ── Dark armory background ────────────────────────────────────
-        GradientPaint bg = new GradientPaint(0,0,new Color(4,4,14),0,HEIGHT,new Color(10,6,28));
-        g2.setPaint(bg); g2.fillRect(0,0,WIDTH,HEIGHT);
+        GradientPaint bg = new GradientPaint(0, 0, new Color(4, 4, 14), 0, HEIGHT, new Color(10, 6, 28));
+        g2.setPaint(bg);
+        g2.fillRect(0, 0, WIDTH, HEIGHT);
         // Scanlines
-        g2.setColor(new Color(0,0,0,28));
-        for (int y=0;y<HEIGHT;y+=3) g2.fillRect(0,y,WIDTH,1);
+        g2.setColor(new Color(0, 0, 0, 28));
+        for (int y = 0; y < HEIGHT; y += 3)
+            g2.fillRect(0, y, WIDTH, 1);
         // Stars
-        for (int i=0;i<starX.length;i++){
-            float f=(float)(0.3+0.2*Math.sin(frameCount*0.02+i));
-            int br=(int)(50+55*f);
-            g2.setColor(new Color(br,br,Math.min(255,br+30)));
-            g2.fillRect(starX[i],starY[i],starSz[i],starSz[i]);
+        for (int i = 0; i < starX.length; i++) {
+            float f = (float) (0.3 + 0.2 * Math.sin(frameCount * 0.02 + i));
+            int br = (int) (50 + 55 * f);
+            g2.setColor(new Color(br, br, Math.min(255, br + 30)));
+            g2.fillRect(starX[i], starY[i], starSz[i], starSz[i]);
         }
 
         // ── Header ────────────────────────────────────────────────────
-        g2.setColor(new Color(0,0,0,200)); g2.fillRect(0,0,WIDTH,152);
+        g2.setColor(new Color(0, 0, 0, 200));
+        g2.fillRect(0, 0, WIDTH, 152);
         // Glow divider
-        g2.setPaint(new GradientPaint(0,152,new Color(120,60,255,0),
-                WIDTH/2,152,new Color(180,100,255,120)));
-        g2.fillRect(0,150,WIDTH,2);
+        g2.setPaint(new GradientPaint(0, 152, new Color(120, 60, 255, 0),
+                WIDTH / 2, 152, new Color(180, 100, 255, 120)));
+        g2.fillRect(0, 150, WIDTH, 2);
 
-        g2.setFont(new Font("Arial",Font.BOLD,11));
-        g2.setColor(new Color(160,100,255,200));
-        String sub="— BLACK MARKET —";
-        g2.drawString(sub,WIDTH/2-g2.getFontMetrics().stringWidth(sub)/2,26);
+        g2.setFont(new Font("Arial", Font.BOLD, 11));
+        g2.setColor(new Color(160, 100, 255, 200));
+        String sub = "— BLACK MARKET —";
+        g2.drawString(sub, WIDTH / 2 - g2.getFontMetrics().stringWidth(sub) / 2, 26);
 
         // Title shadow + text
-        g2.setFont(new Font("Arial",Font.BOLD,42));
-        String title="WAVE "+(wave-1)+" CLEAR";
-        int tw=g2.getFontMetrics().stringWidth(title);
-        g2.setColor(new Color(100,0,200,80)); g2.drawString(title,WIDTH/2-tw/2+2,72);
-        g2.setColor(new Color(230,200,255));  g2.drawString(title,WIDTH/2-tw/2,70);
+        g2.setFont(new Font("Arial", Font.BOLD, 42));
+        String title = "WAVE " + (wave - 1) + " CLEAR";
+        int tw = g2.getFontMetrics().stringWidth(title);
+        g2.setColor(new Color(100, 0, 200, 80));
+        g2.drawString(title, WIDTH / 2 - tw / 2 + 2, 72);
+        g2.setColor(new Color(230, 200, 255));
+        g2.drawString(title, WIDTH / 2 - tw / 2, 70);
 
         // Score pill
-        g2.setFont(new Font("Courier New",Font.BOLD,19));
-        String sc="⬡ "+score+" pts";
-        int sw=g2.getFontMetrics().stringWidth(sc);
-        g2.setColor(new Color(50,50,0,160));
-        g2.fillRoundRect(WIDTH/2-sw/2-12,93,sw+24,26,10,10);
-        g2.setColor(new Color(255,220,60)); g2.drawString(sc,WIDTH/2-sw/2,112);
+        g2.setFont(new Font("Courier New", Font.BOLD, 19));
+        String sc = "⬡ " + score + " pts";
+        int sw = g2.getFontMetrics().stringWidth(sc);
+        g2.setColor(new Color(50, 50, 0, 160));
+        g2.fillRoundRect(WIDTH / 2 - sw / 2 - 12, 93, sw + 24, 26, 10, 10);
+        g2.setColor(new Color(255, 220, 60));
+        g2.drawString(sc, WIDTH / 2 - sw / 2, 112);
 
         // Hint
-        g2.setFont(new Font("Arial",Font.PLAIN,11));
-        g2.setColor(new Color(90,80,130));
-        String hint="All upgrades are PERMANENT — they last until game over";
-        g2.drawString(hint,WIDTH/2-g2.getFontMetrics().stringWidth(hint)/2,138);
+        g2.setFont(new Font("Arial", Font.PLAIN, 11));
+        g2.setColor(new Color(90, 80, 130));
+        String hint = "All upgrades are PERMANENT — they last until game over";
+        g2.drawString(hint, WIDTH / 2 - g2.getFontMetrics().stringWidth(hint) / 2, 138);
 
         // ── 3 Item Cards ──────────────────────────────────────────────
-        int cardW=170, cardH=228, gap=18;
-        int cx0=WIDTH/2-(cardW*3+gap*2)/2, cardY=162;
+        int cardW = 170, cardH = 228, gap = 18;
+        int cx0 = WIDTH / 2 - (cardW * 3 + gap * 2) / 2, cardY = 162;
 
-        for (int slot=0;slot<SHOP_OFFERED;slot++){
-            int  idx      = shopOfferedItems[slot];
-            int  rx       = cx0+slot*(cardW+gap);
-            boolean bought    = shopBought[slot];
-            boolean canAfford = score>=SHOP_COSTS[idx];
-            int  rar      = SHOP_RARITY[idx];
-            Color rarC    = RARITY_COLOR[rar];
-            Color ac      = SHOP_ACCENT[idx];
+        for (int slot = 0; slot < SHOP_OFFERED; slot++) {
+            int idx = shopOfferedItems[slot];
+            int rx = cx0 + slot * (cardW + gap);
+            boolean bought = shopBought[slot];
+            boolean canAfford = score >= SHOP_COSTS[idx];
+            int rar = SHOP_RARITY[idx];
+            Color rarC = RARITY_COLOR[rar];
+            Color ac = SHOP_ACCENT[idx];
 
             // Outer glow
-            if (!bought && canAfford){
-                float pulse=(float)(0.3+0.2*Math.sin(frameCount*0.08+slot*1.1));
-                g2.setColor(new Color(rarC.getRed(),rarC.getGreen(),rarC.getBlue(),(int)(38*pulse)));
-                g2.fillRoundRect(rx-6,cardY-6,cardW+12,cardH+12,20,20);
+            if (!bought && canAfford) {
+                float pulse = (float) (0.3 + 0.2 * Math.sin(frameCount * 0.08 + slot * 1.1));
+                g2.setColor(new Color(rarC.getRed(), rarC.getGreen(), rarC.getBlue(), (int) (38 * pulse)));
+                g2.fillRoundRect(rx - 6, cardY - 6, cardW + 12, cardH + 12, 20, 20);
             }
             // Card body
-            GradientPaint cBg=bought
-                ?new GradientPaint(rx,cardY,new Color(8,28,8),rx,cardY+cardH,new Color(4,14,4))
-                :new GradientPaint(rx,cardY,new Color(14,10,32),rx,cardY+cardH,new Color(6,4,18));
-            g2.setPaint(cBg); g2.fillRoundRect(rx,cardY,cardW,cardH,14,14);
+            GradientPaint cBg = bought
+                    ? new GradientPaint(rx, cardY, new Color(8, 28, 8), rx, cardY + cardH, new Color(4, 14, 4))
+                    : new GradientPaint(rx, cardY, new Color(14, 10, 32), rx, cardY + cardH, new Color(6, 4, 18));
+            g2.setPaint(cBg);
+            g2.fillRoundRect(rx, cardY, cardW, cardH, 14, 14);
             // Border
-            g2.setColor(bought?new Color(40,160,40):canAfford?rarC:new Color(40,38,58));
-            g2.setStroke(new BasicStroke(bought?2.5f:canAfford?2f:1f));
-            g2.drawRoundRect(rx,cardY,cardW,cardH,14,14);
+            g2.setColor(bought ? new Color(40, 160, 40) : canAfford ? rarC : new Color(40, 38, 58));
+            g2.setStroke(new BasicStroke(bought ? 2.5f : canAfford ? 2f : 1f));
+            g2.drawRoundRect(rx, cardY, cardW, cardH, 14, 14);
             g2.setStroke(new BasicStroke(1));
 
             // Rarity badge
-            g2.setColor(new Color(rarC.getRed(),rarC.getGreen(),rarC.getBlue(),bought?70:155));
-            g2.fillRoundRect(rx+cardW/2-34,cardY+8,68,16,6,6);
-            g2.setFont(new Font("Arial",Font.BOLD,9));
-            g2.setColor(new Color(6,4,18));
-            String rLbl=RARITY_LABEL[rar];
-            g2.drawString(rLbl,rx+cardW/2-g2.getFontMetrics().stringWidth(rLbl)/2,cardY+19);
+            g2.setColor(new Color(rarC.getRed(), rarC.getGreen(), rarC.getBlue(), bought ? 70 : 155));
+            g2.fillRoundRect(rx + cardW / 2 - 34, cardY + 8, 68, 16, 6, 6);
+            g2.setFont(new Font("Arial", Font.BOLD, 9));
+            g2.setColor(new Color(6, 4, 18));
+            String rLbl = RARITY_LABEL[rar];
+            g2.drawString(rLbl, rx + cardW / 2 - g2.getFontMetrics().stringWidth(rLbl) / 2, cardY + 19);
 
             // Icon
-            drawShopIcon(g2,idx,rx+cardW/2,cardY+66,bought?0.35f:1f,frameCount);
+            drawShopIcon(g2, idx, rx + cardW / 2, cardY + 66, bought ? 0.35f : 1f, frameCount);
 
             // PERMANENT badge
-            g2.setFont(new Font("Arial",Font.BOLD,8));
-            g2.setColor(new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),bought?60:130));
-            g2.fillRoundRect(rx+cardW/2-30,cardY+96,60,13,5,5);
-            g2.setColor(new Color(6,4,18));
-            g2.drawString("★ PERMANENT ★",rx+cardW/2-g2.getFontMetrics().stringWidth("★ PERMANENT ★")/2,cardY+106);
+            g2.setFont(new Font("Arial", Font.BOLD, 8));
+            g2.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), bought ? 60 : 130));
+            g2.fillRoundRect(rx + cardW / 2 - 30, cardY + 96, 60, 13, 5, 5);
+            g2.setColor(new Color(6, 4, 18));
+            g2.drawString("★ PERMANENT ★", rx + cardW / 2 - g2.getFontMetrics().stringWidth("★ PERMANENT ★") / 2,
+                    cardY + 106);
 
             // Item name
-            g2.setFont(new Font("Arial",Font.BOLD,14));
-            g2.setColor(bought?new Color(70,160,70):canAfford?Color.WHITE:new Color(80,78,100));
-            FontMetrics nfm=g2.getFontMetrics();
-            g2.drawString(SHOP_NAMES[idx],rx+cardW/2-nfm.stringWidth(SHOP_NAMES[idx])/2,cardY+124);
+            g2.setFont(new Font("Arial", Font.BOLD, 14));
+            g2.setColor(bought ? new Color(70, 160, 70) : canAfford ? Color.WHITE : new Color(80, 78, 100));
+            FontMetrics nfm = g2.getFontMetrics();
+            g2.drawString(SHOP_NAMES[idx], rx + cardW / 2 - nfm.stringWidth(SHOP_NAMES[idx]) / 2, cardY + 124);
 
             // Stat line
-            g2.setFont(new Font("Arial",Font.BOLD,10));
-            g2.setColor(bought?new Color(50,130,50):canAfford?new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),220):new Color(65,63,85));
-            FontMetrics dfm=g2.getFontMetrics();
-            g2.drawString(SHOP_DESCS[idx],rx+cardW/2-dfm.stringWidth(SHOP_DESCS[idx])/2,cardY+140);
+            g2.setFont(new Font("Arial", Font.BOLD, 10));
+            g2.setColor(bought ? new Color(50, 130, 50)
+                    : canAfford ? new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), 220) : new Color(65, 63, 85));
+            FontMetrics dfm = g2.getFontMetrics();
+            g2.drawString(SHOP_DESCS[idx], rx + cardW / 2 - dfm.stringWidth(SHOP_DESCS[idx]) / 2, cardY + 140);
 
             // Flavor text (word-wrapped)
-            g2.setFont(new Font("Arial",Font.ITALIC,9));
-            g2.setColor(bought?new Color(40,100,40,170):new Color(110,100,150,200));
-            String flav=SHOP_FLAVORS[idx];
-            FontMetrics ffm=g2.getFontMetrics();
-            if (ffm.stringWidth(flav)>cardW-16){
-                int sp=flav.lastIndexOf(' ',flav.length()/2);
-                if (sp<0) sp=flav.length()/2;
-                g2.drawString(flav.substring(0,sp),    rx+cardW/2-ffm.stringWidth(flav.substring(0,sp))/2,   cardY+158);
-                g2.drawString(flav.substring(sp+1),    rx+cardW/2-ffm.stringWidth(flav.substring(sp+1))/2,   cardY+169);
+            g2.setFont(new Font("Arial", Font.ITALIC, 9));
+            g2.setColor(bought ? new Color(40, 100, 40, 170) : new Color(110, 100, 150, 200));
+            String flav = SHOP_FLAVORS[idx];
+            FontMetrics ffm = g2.getFontMetrics();
+            if (ffm.stringWidth(flav) > cardW - 16) {
+                int sp = flav.lastIndexOf(' ', flav.length() / 2);
+                if (sp < 0)
+                    sp = flav.length() / 2;
+                g2.drawString(flav.substring(0, sp), rx + cardW / 2 - ffm.stringWidth(flav.substring(0, sp)) / 2,
+                        cardY + 158);
+                g2.drawString(flav.substring(sp + 1), rx + cardW / 2 - ffm.stringWidth(flav.substring(sp + 1)) / 2,
+                        cardY + 169);
             } else {
-                g2.drawString(flav,rx+cardW/2-ffm.stringWidth(flav)/2,cardY+163);
+                g2.drawString(flav, rx + cardW / 2 - ffm.stringWidth(flav) / 2, cardY + 163);
             }
 
             // Price / ACQUIRED
-            if (bought){
-                g2.setColor(new Color(40,160,40,200));
-                g2.fillRoundRect(rx+cardW/2-36,cardY+cardH-42,72,24,8,8);
-                g2.setFont(new Font("Arial",Font.BOLD,12));
-                g2.setColor(new Color(6,4,18));
-                g2.drawString("ACQUIRED",rx+cardW/2-g2.getFontMetrics().stringWidth("ACQUIRED")/2,cardY+cardH-25);
+            if (bought) {
+                g2.setColor(new Color(40, 160, 40, 200));
+                g2.fillRoundRect(rx + cardW / 2 - 36, cardY + cardH - 42, 72, 24, 8, 8);
+                g2.setFont(new Font("Arial", Font.BOLD, 12));
+                g2.setColor(new Color(6, 4, 18));
+                g2.drawString("ACQUIRED", rx + cardW / 2 - g2.getFontMetrics().stringWidth("ACQUIRED") / 2,
+                        cardY + cardH - 25);
             } else {
-                Color prC=canAfford?new Color(255,210,50):new Color(200,60,60);
-                g2.setColor(new Color(prC.getRed(),prC.getGreen(),prC.getBlue(),40));
-                g2.fillRoundRect(rx+cardW/2-36,cardY+cardH-44,72,26,8,8);
-                g2.setColor(prC); g2.setStroke(new BasicStroke(1f));
-                g2.drawRoundRect(rx+cardW/2-36,cardY+cardH-44,72,26,8,8);
-                g2.setStroke(new BasicStroke(1));
-                g2.setFont(new Font("Courier New",Font.BOLD,15));
-                String price="$"+SHOP_COSTS[idx];
+                Color prC = canAfford ? new Color(255, 210, 50) : new Color(200, 60, 60);
+                g2.setColor(new Color(prC.getRed(), prC.getGreen(), prC.getBlue(), 40));
+                g2.fillRoundRect(rx + cardW / 2 - 36, cardY + cardH - 44, 72, 26, 8, 8);
                 g2.setColor(prC);
-                g2.drawString(price,rx+cardW/2-g2.getFontMetrics().stringWidth(price)/2,cardY+cardH-27);
-                if (!canAfford){
-                    g2.setFont(new Font("Arial",Font.PLAIN,8));
-                    g2.setColor(new Color(180,60,60,180));
-                    String nd="need $"+(SHOP_COSTS[idx]-score)+" more";
-                    g2.drawString(nd,rx+cardW/2-g2.getFontMetrics().stringWidth(nd)/2,cardY+cardH-12);
+                g2.setStroke(new BasicStroke(1f));
+                g2.drawRoundRect(rx + cardW / 2 - 36, cardY + cardH - 44, 72, 26, 8, 8);
+                g2.setStroke(new BasicStroke(1));
+                g2.setFont(new Font("Courier New", Font.BOLD, 15));
+                String price = "$" + SHOP_COSTS[idx];
+                g2.setColor(prC);
+                g2.drawString(price, rx + cardW / 2 - g2.getFontMetrics().stringWidth(price) / 2, cardY + cardH - 27);
+                if (!canAfford) {
+                    g2.setFont(new Font("Arial", Font.PLAIN, 8));
+                    g2.setColor(new Color(180, 60, 60, 180));
+                    String nd = "need $" + (SHOP_COSTS[idx] - score) + " more";
+                    g2.drawString(nd, rx + cardW / 2 - g2.getFontMetrics().stringWidth(nd) / 2, cardY + cardH - 12);
                 }
             }
         }
 
         // ── Active upgrades row ───────────────────────────────────────
-        int rowY=cardY+cardH+20;
-        g2.setFont(new Font("Arial",Font.BOLD,11));
-        g2.setColor(new Color(100,90,140));
+        int rowY = cardY + cardH + 20;
+        g2.setFont(new Font("Arial", Font.BOLD, 11));
+        g2.setColor(new Color(100, 90, 140));
         g2.drawString("ACTIVE UPGRADES:", cx0, rowY);
-        int ex=cx0+132;
-        String[] aNames={"AETHER STRIDE","FRENZY CORE","CLOCK FRACTURE","GOLD RUSH","GHOST WALK"};
-        boolean[] aFlags={shopSpeedBoost,shopRapidFire,shopBulletTime,shopScoreRush,shopPhaseShift};
-        int[] aIdx={1,2,3,4,5};
-        boolean any=false;
-        for (int i=0;i<aFlags.length;i++){
-            if (!aFlags[i]) continue;
-            any=true;
-            Color ac2=SHOP_ACCENT[aIdx[i]];
-            g2.setFont(new Font("Arial",Font.BOLD,10));
-            int lw=g2.getFontMetrics().stringWidth(aNames[i]);
-            g2.setColor(new Color(ac2.getRed(),ac2.getGreen(),ac2.getBlue(),160));
-            g2.fillRoundRect(ex-2,rowY-11,lw+10,14,5,5);
-            g2.setColor(new Color(6,4,18));
-            g2.drawString(aNames[i],ex+3,rowY);
-            ex+=lw+16;
+        int ex = cx0 + 132;
+        String[] aNames = { "AETHER STRIDE", "FRENZY CORE", "CLOCK FRACTURE", "GOLD RUSH", "GHOST WALK" };
+        boolean[] aFlags = { shopSpeedBoost, shopRapidFire, shopBulletTime, shopScoreRush, shopPhaseShift };
+        int[] aIdx = { 1, 2, 3, 4, 5 };
+        boolean any = false;
+        for (int i = 0; i < aFlags.length; i++) {
+            if (!aFlags[i])
+                continue;
+            any = true;
+            Color ac2 = SHOP_ACCENT[aIdx[i]];
+            g2.setFont(new Font("Arial", Font.BOLD, 10));
+            int lw = g2.getFontMetrics().stringWidth(aNames[i]);
+            g2.setColor(new Color(ac2.getRed(), ac2.getGreen(), ac2.getBlue(), 160));
+            g2.fillRoundRect(ex - 2, rowY - 11, lw + 10, 14, 5, 5);
+            g2.setColor(new Color(6, 4, 18));
+            g2.drawString(aNames[i], ex + 3, rowY);
+            ex += lw + 16;
         }
-        if (!any){
-            g2.setFont(new Font("Arial",Font.ITALIC,10));
-            g2.setColor(new Color(60,58,80));
-            g2.drawString("none yet",ex,rowY);
+        if (!any) {
+            g2.setFont(new Font("Arial", Font.ITALIC, 10));
+            g2.setColor(new Color(60, 58, 80));
+            g2.drawString("none yet", ex, rowY);
         }
 
         // HP pips
-        g2.setFont(new Font("Arial",Font.BOLD,11));
-        g2.setColor(new Color(120,180,255));
-        g2.drawString("HP:", WIDTH-110, rowY);
-        for (int i=0;i<player.lives;i++){
-            int hx=WIDTH-88+i*20;
-            g2.setColor(i==0?new Color(255,80,80):Color.CYAN);
-            g2.fillPolygon(new int[]{hx+7,hx,hx+14},new int[]{rowY-13,rowY+1,rowY+1},3);
+        g2.setFont(new Font("Arial", Font.BOLD, 11));
+        g2.setColor(new Color(120, 180, 255));
+        g2.drawString("HP:", WIDTH - 110, rowY);
+        for (int i = 0; i < player.lives; i++) {
+            int hx = WIDTH - 88 + i * 20;
+            g2.setColor(i == 0 ? new Color(255, 80, 80) : Color.CYAN);
+            g2.fillPolygon(new int[] { hx + 7, hx, hx + 14 }, new int[] { rowY - 13, rowY + 1, rowY + 1 }, 3);
         }
 
         // ── Continue button ───────────────────────────────────────────
-        int btnY=rowY+24;
-        Rectangle cont=new Rectangle(WIDTH/2-115,btnY,230,50);
-        g2.setPaint(new GradientPaint(cont.x,cont.y,new Color(28,10,65),
-                cont.x,cont.y+cont.height,new Color(14,5,38)));
-        g2.fillRoundRect(cont.x,cont.y,cont.width,cont.height,12,12);
-        g2.setColor(new Color(155,90,255));
+        int btnY = rowY + 24;
+        Rectangle cont = new Rectangle(WIDTH / 2 - 115, btnY, 230, 50);
+        g2.setPaint(new GradientPaint(cont.x, cont.y, new Color(28, 10, 65),
+                cont.x, cont.y + cont.height, new Color(14, 5, 38)));
+        g2.fillRoundRect(cont.x, cont.y, cont.width, cont.height, 12, 12);
+        g2.setColor(new Color(155, 90, 255));
         g2.setStroke(new BasicStroke(2f));
-        g2.drawRoundRect(cont.x,cont.y,cont.width,cont.height,12,12);
+        g2.drawRoundRect(cont.x, cont.y, cont.width, cont.height, 12, 12);
         g2.setStroke(new BasicStroke(1));
-        g2.setFont(new Font("Arial",Font.BOLD,18));
+        g2.setFont(new Font("Arial", Font.BOLD, 18));
         g2.setColor(Color.WHITE);
-        String contLbl="ENTER THE FRAY  →";
-        g2.drawString(contLbl,cont.x+cont.width/2-g2.getFontMetrics().stringWidth(contLbl)/2,
-                cont.y+cont.height/2+7);
-        btnShopContinue.setBounds(cont.x,cont.y,cont.width,cont.height);
+        String contLbl = "ENTER THE FRAY  →";
+        g2.drawString(contLbl, cont.x + cont.width / 2 - g2.getFontMetrics().stringWidth(contLbl) / 2,
+                cont.y + cont.height / 2 + 7);
+        btnShopContinue.setBounds(cont.x, cont.y, cont.width, cont.height);
 
         // Pickup flash
-        if (pickupTimer>0){
-            float alpha=Math.min(1f,pickupTimer/30f);
-            g2.setFont(new Font("Arial",Font.BOLD,18));
-            FontMetrics pm=g2.getFontMetrics();
-            int msgX=WIDTH/2-pm.stringWidth(pickupMsg)/2;
-            int msgY=cont.y+cont.height+34;
-            g2.setColor(new Color(0,0,0,(int)(alpha*140)));
-            g2.fillRoundRect(msgX-10,msgY-22,pm.stringWidth(pickupMsg)+20,28,8,8);
-            g2.setColor(new Color(120,255,160,(int)(alpha*230)));
-            g2.drawString(pickupMsg,msgX,msgY);
+        if (pickupTimer > 0) {
+            float alpha = Math.min(1f, pickupTimer / 30f);
+            g2.setFont(new Font("Arial", Font.BOLD, 18));
+            FontMetrics pm = g2.getFontMetrics();
+            int msgX = WIDTH / 2 - pm.stringWidth(pickupMsg) / 2;
+            int msgY = cont.y + cont.height + 34;
+            g2.setColor(new Color(0, 0, 0, (int) (alpha * 140)));
+            g2.fillRoundRect(msgX - 10, msgY - 22, pm.stringWidth(pickupMsg) + 20, 28, 8, 8);
+            g2.setColor(new Color(120, 255, 160, (int) (alpha * 230)));
+            g2.drawString(pickupMsg, msgX, msgY);
         }
     }
 
     /** Unique animated icon for each shop item, centered at (cx,cy). */
-    private void drawShopIcon(Graphics2D g2, int idx, int cx, int cy, float dim, int fc){
-        float pulse=(float)(0.75+0.25*Math.sin(fc*0.10+idx));
-        int a=(int)(215*pulse*dim);
-        Color ac=SHOP_ACCENT[idx];
-        Color c=new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),a);
-        Color cw=new Color(255,255,255,a);
+    private void drawShopIcon(Graphics2D g2, int idx, int cx, int cy, float dim, int fc) {
+        float pulse = (float) (0.75 + 0.25 * Math.sin(fc * 0.10 + idx));
+        int a = (int) (215 * pulse * dim);
+        Color ac = SHOP_ACCENT[idx];
+        Color c = new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), a);
+        Color cw = new Color(255, 255, 255, a);
         g2.setStroke(new BasicStroke(2f));
-        switch(idx){
+        switch (idx) {
             case SHOP_EXTRA_LIFE: { // heart
-                int[] hx={cx,cx-10,cx-12,cx-6,cx,cx+6,cx+12,cx+10};
-                int[] hy={cy+10,cy-2,cy-8,cy-12,cy-8,cy-12,cy-8,cy-2};
-                g2.setColor(c); g2.fillPolygon(hx,hy,8);
-                g2.setColor(cw); g2.drawPolygon(hx,hy,8); break; }
+                int[] hx = { cx, cx - 10, cx - 12, cx - 6, cx, cx + 6, cx + 12, cx + 10 };
+                int[] hy = { cy + 10, cy - 2, cy - 8, cy - 12, cy - 8, cy - 12, cy - 8, cy - 2 };
+                g2.setColor(c);
+                g2.fillPolygon(hx, hy, 8);
+                g2.setColor(cw);
+                g2.drawPolygon(hx, hy, 8);
+                break;
+            }
             case SHOP_SPEED_BOOST: { // lightning bolt
-                int[] lx={cx-3,cx+5,cx-1,cx+7,cx-5,cx+3,cx-1};
-                int[] ly={cy-14,cy-2,cy-2,cy+14,cy+2,cy+2,cy-14};
-                g2.setColor(c); g2.fillPolygon(lx,ly,7);
-                g2.setColor(cw); g2.drawPolygon(lx,ly,7); break; }
+                int[] lx = { cx - 3, cx + 5, cx - 1, cx + 7, cx - 5, cx + 3, cx - 1 };
+                int[] ly = { cy - 14, cy - 2, cy - 2, cy + 14, cy + 2, cy + 2, cy - 14 };
+                g2.setColor(c);
+                g2.fillPolygon(lx, ly, 7);
+                g2.setColor(cw);
+                g2.drawPolygon(lx, ly, 7);
+                break;
+            }
             case SHOP_RAPID_FIRE: { // 3 stacked bullets
-                for(int i=0;i<3;i++){
-                    int bx=cx-16+i*16, by=cy-6;
-                    g2.setColor(c); g2.fillRoundRect(bx,by,8,14,4,4);
-                    g2.setColor(cw); g2.drawRoundRect(bx,by,8,14,4,4);
-                } break; }
-            case SHOP_BULLET_TIME: { // clock face
-                g2.setColor(c); g2.fillOval(cx-13,cy-13,26,26);
-                g2.setColor(cw); g2.drawOval(cx-13,cy-13,26,26);
-                g2.setColor(new Color(6,4,18,a));
-                double ha=Math.toRadians(-90+fc*3);
-                g2.drawLine(cx,cy,cx+(int)(8*Math.cos(ha)),cy+(int)(8*Math.sin(ha)));
-                g2.drawLine(cx,cy,cx+(int)(11*Math.cos(Math.toRadians(-90+fc*8))),
-                        cy+(int)(11*Math.sin(Math.toRadians(-90+fc*8)))); break; }
-            case SHOP_SCORE_RUSH: { // coin stack
-                for(int i=2;i>=0;i--){
-                    int cy2=cy+4-i*5;
-                    g2.setColor(i==0?c:new Color(ac.getRed()/2,ac.getGreen()/2,0,a));
-                    g2.fillOval(cx-11,cy2-4,22,9);
-                    g2.setColor(cw); g2.drawOval(cx-11,cy2-4,22,9);
-                } break; }
-            case SHOP_PHASE_SHIFT: { // ghost
-                int ga=(int)(185*pulse*dim);
-                Color gc=new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),ga);
-                int[] gx={cx-10,cx-10,cx-7,cx-4,cx,cx+4,cx+7,cx+10,cx+10};
-                int[] gy={cy+12,cy-6,cy-12,cy-14,cy-12,cy-14,cy-12,cy-6,cy+12};
-                g2.setColor(gc); g2.fillPolygon(gx,gy,9);
-                g2.setColor(new Color(255,255,255,ga)); g2.drawPolygon(gx,gy,9);
-                g2.setColor(new Color(6,4,18,ga));
-                g2.fillOval(cx-5,cy-6,4,5); g2.fillOval(cx+1,cy-6,4,5); break; }
-            case SHOP_NUKE: { // starburst
-                for(int i=0;i<8;i++){
-                    double ang=i*Math.PI/4+Math.toRadians(fc*2);
-                    g2.setColor(c); g2.setStroke(new BasicStroke(3f));
-                    g2.drawLine(cx+(int)(5*Math.cos(ang)),cy+(int)(5*Math.sin(ang)),
-                                cx+(int)(14*Math.cos(ang)),cy+(int)(14*Math.sin(ang)));
+                for (int i = 0; i < 3; i++) {
+                    int bx = cx - 16 + i * 16, by = cy - 6;
+                    g2.setColor(c);
+                    g2.fillRoundRect(bx, by, 8, 14, 4, 4);
+                    g2.setColor(cw);
+                    g2.drawRoundRect(bx, by, 8, 14, 4, 4);
                 }
-                g2.setColor(c); g2.fillOval(cx-6,cy-6,12,12);
-                g2.setColor(cw); g2.setStroke(new BasicStroke(1.5f)); g2.drawOval(cx-6,cy-6,12,12); break; }
+                break;
+            }
+            case SHOP_BULLET_TIME: { // clock face
+                g2.setColor(c);
+                g2.fillOval(cx - 13, cy - 13, 26, 26);
+                g2.setColor(cw);
+                g2.drawOval(cx - 13, cy - 13, 26, 26);
+                g2.setColor(new Color(6, 4, 18, a));
+                double ha = Math.toRadians(-90 + fc * 3);
+                g2.drawLine(cx, cy, cx + (int) (8 * Math.cos(ha)), cy + (int) (8 * Math.sin(ha)));
+                g2.drawLine(cx, cy, cx + (int) (11 * Math.cos(Math.toRadians(-90 + fc * 8))),
+                        cy + (int) (11 * Math.sin(Math.toRadians(-90 + fc * 8))));
+                break;
+            }
+            case SHOP_SCORE_RUSH: { // coin stack
+                for (int i = 2; i >= 0; i--) {
+                    int cy2 = cy + 4 - i * 5;
+                    g2.setColor(i == 0 ? c : new Color(ac.getRed() / 2, ac.getGreen() / 2, 0, a));
+                    g2.fillOval(cx - 11, cy2 - 4, 22, 9);
+                    g2.setColor(cw);
+                    g2.drawOval(cx - 11, cy2 - 4, 22, 9);
+                }
+                break;
+            }
+            case SHOP_PHASE_SHIFT: { // ghost
+                int ga = (int) (185 * pulse * dim);
+                Color gc = new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), ga);
+                int[] gx = { cx - 10, cx - 10, cx - 7, cx - 4, cx, cx + 4, cx + 7, cx + 10, cx + 10 };
+                int[] gy = { cy + 12, cy - 6, cy - 12, cy - 14, cy - 12, cy - 14, cy - 12, cy - 6, cy + 12 };
+                g2.setColor(gc);
+                g2.fillPolygon(gx, gy, 9);
+                g2.setColor(new Color(255, 255, 255, ga));
+                g2.drawPolygon(gx, gy, 9);
+                g2.setColor(new Color(6, 4, 18, ga));
+                g2.fillOval(cx - 5, cy - 6, 4, 5);
+                g2.fillOval(cx + 1, cy - 6, 4, 5);
+                break;
+            }
+            case SHOP_NUKE: { // starburst
+                for (int i = 0; i < 8; i++) {
+                    double ang = i * Math.PI / 4 + Math.toRadians(fc * 2);
+                    g2.setColor(c);
+                    g2.setStroke(new BasicStroke(3f));
+                    g2.drawLine(cx + (int) (5 * Math.cos(ang)), cy + (int) (5 * Math.sin(ang)),
+                            cx + (int) (14 * Math.cos(ang)), cy + (int) (14 * Math.sin(ang)));
+                }
+                g2.setColor(c);
+                g2.fillOval(cx - 6, cy - 6, 12, 12);
+                g2.setColor(cw);
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawOval(cx - 6, cy - 6, 12, 12);
+                break;
+            }
             case SHOP_REPAIR: { // cross / plus
                 g2.setColor(c);
-                g2.fillRect(cx-3,cy-12,6,24); g2.fillRect(cx-12,cy-3,24,6);
+                g2.fillRect(cx - 3, cy - 12, 6, 24);
+                g2.fillRect(cx - 12, cy - 3, 24, 6);
                 g2.setColor(cw);
-                g2.drawRect(cx-3,cy-12,6,24); g2.drawRect(cx-12,cy-3,24,6); break; }
+                g2.drawRect(cx - 3, cy - 12, 6, 24);
+                g2.drawRect(cx - 12, cy - 3, 24, 6);
+                break;
+            }
         }
         g2.setStroke(new BasicStroke(1));
     }
-
 
     // ═══════════════════════════════════════════════════════════════════
     // ★ 4 NEW SCENES
     // ═══════════════════════════════════════════════════════════════════
 
     // SCENE 6: VOID — deep wormhole / interdimensional rift
-    private void drawSceneVoid(Graphics2D g2){
-        drawSkyGradient(g2,new Color(0,0,2),new Color(4,0,12));
+    private void drawSceneVoid(Graphics2D g2) {
+        drawSkyGradient(g2, new Color(0, 0, 2), new Color(4, 0, 12));
         // Wormhole spiral rings
-        int cx=WIDTH/2, cy=HEIGHT/2;
-        for(int r=200;r>10;r-=18){
-            float t=(float)(frameCount*0.012+r*0.04);
-            int alpha=Math.max(0,Math.min(80,(200-r)/2));
-            float hue=(r+frameCount*0.5f)/300f%1f;
-            int rc=(int)(Math.sin(hue*Math.PI*2)*80+80);
-            int gc=(int)(Math.sin(hue*Math.PI*2+2.1)*80+80);
-            int bc=(int)(Math.sin(hue*Math.PI*2+4.2)*80+80);
-            g2.setColor(new Color(rc,gc,bc,alpha));
+        int cx = WIDTH / 2, cy = HEIGHT / 2;
+        for (int r = 200; r > 10; r -= 18) {
+            float t = (float) (frameCount * 0.012 + r * 0.04);
+            int alpha = Math.max(0, Math.min(80, (200 - r) / 2));
+            float hue = (r + frameCount * 0.5f) / 300f % 1f;
+            int rc = (int) (Math.sin(hue * Math.PI * 2) * 80 + 80);
+            int gc = (int) (Math.sin(hue * Math.PI * 2 + 2.1) * 80 + 80);
+            int bc = (int) (Math.sin(hue * Math.PI * 2 + 4.2) * 80 + 80);
+            g2.setColor(new Color(rc, gc, bc, alpha));
             g2.setStroke(new BasicStroke(2.2f));
-            int ox=(int)(Math.cos(t)*r*0.03), oy=(int)(Math.sin(t)*r*0.03);
-            g2.drawOval(cx-r+ox,cy-r+oy,r*2,r*2);
+            int ox = (int) (Math.cos(t) * r * 0.03), oy = (int) (Math.sin(t) * r * 0.03);
+            g2.drawOval(cx - r + ox, cy - r + oy, r * 2, r * 2);
         }
         g2.setStroke(new BasicStroke(1));
         // Central void eye
-        g2.setColor(new Color(0,0,0,200)); g2.fillOval(cx-12,cy-12,24,24);
-        g2.setColor(new Color(120,0,200,180)); g2.setStroke(new BasicStroke(1.5f));
-        g2.drawOval(cx-12,cy-12,24,24); g2.setStroke(new BasicStroke(1));
+        g2.setColor(new Color(0, 0, 0, 200));
+        g2.fillOval(cx - 12, cy - 12, 24, 24);
+        g2.setColor(new Color(120, 0, 200, 180));
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawOval(cx - 12, cy - 12, 24, 24);
+        g2.setStroke(new BasicStroke(1));
         // Stars being distorted toward centre
         rand.setSeed(12345);
-        for(int i=0;i<80;i++){
-            int sx2=rand.nextInt(WIDTH), sy2=rand.nextInt(HEIGHT);
-            double dx=cx-sx2, dy2=cy-sy2;
-            double dist=Math.sqrt(dx*dx+dy2*dy2);
-            double pull=Math.max(0,1-dist/300)*Math.sin(frameCount*0.04+i)*3;
-            int fx=(int)(sx2+dx/dist*pull), fy=(int)(sy2+dy2/dist*pull);
-            int br2=60+rand.nextInt(80);
-            g2.setColor(new Color(br2,br2,Math.min(255,br2+40),br2));
-            g2.fillRect(fx,fy,1,1);
+        for (int i = 0; i < 80; i++) {
+            int sx2 = rand.nextInt(WIDTH), sy2 = rand.nextInt(HEIGHT);
+            double dx = cx - sx2, dy2 = cy - sy2;
+            double dist = Math.sqrt(dx * dx + dy2 * dy2);
+            double pull = Math.max(0, 1 - dist / 300) * Math.sin(frameCount * 0.04 + i) * 3;
+            int fx = (int) (sx2 + dx / dist * pull), fy = (int) (sy2 + dy2 / dist * pull);
+            int br2 = 60 + rand.nextInt(80);
+            g2.setColor(new Color(br2, br2, Math.min(255, br2 + 40), br2));
+            g2.fillRect(fx, fy, 1, 1);
         }
         // Streaks radiating outward (like motion blur of falling in)
-        rand.setSeed(frameCount/4L*4+99);
-        for(int i=0;i<20;i++){
-            double ang=rand.nextDouble()*Math.PI*2;
-            double len=40+rand.nextDouble()*120;
-            int r2=80+rand.nextInt(150);
-            int x1=(int)(cx+Math.cos(ang)*r2), y1=(int)(cy+Math.sin(ang)*r2);
-            int x2=(int)(cx+Math.cos(ang)*(r2+len)), y2=(int)(cy+Math.sin(ang)*(r2+len));
-            int alpha2=rand.nextInt(40)+10;
-            float hue2=(float)(ang/(Math.PI*2));
-            g2.setColor(new Color((int)(Math.abs(Math.sin(hue2*3))*120+80),(int)(Math.abs(Math.sin(hue2*3+2))*80+30),(int)(Math.abs(Math.sin(hue2*3+4))*120+80),alpha2));
-            g2.setStroke(new BasicStroke(0.8f)); g2.drawLine(x1,y1,x2,y2); g2.setStroke(new BasicStroke(1));
+        rand.setSeed(frameCount / 4L * 4 + 99);
+        for (int i = 0; i < 20; i++) {
+            double ang = rand.nextDouble() * Math.PI * 2;
+            double len = 40 + rand.nextDouble() * 120;
+            int r2 = 80 + rand.nextInt(150);
+            int x1 = (int) (cx + Math.cos(ang) * r2), y1 = (int) (cy + Math.sin(ang) * r2);
+            int x2 = (int) (cx + Math.cos(ang) * (r2 + len)), y2 = (int) (cy + Math.sin(ang) * (r2 + len));
+            int alpha2 = rand.nextInt(40) + 10;
+            float hue2 = (float) (ang / (Math.PI * 2));
+            g2.setColor(new Color((int) (Math.abs(Math.sin(hue2 * 3)) * 120 + 80),
+                    (int) (Math.abs(Math.sin(hue2 * 3 + 2)) * 80 + 30),
+                    (int) (Math.abs(Math.sin(hue2 * 3 + 4)) * 120 + 80), alpha2));
+            g2.setStroke(new BasicStroke(0.8f));
+            g2.drawLine(x1, y1, x2, y2);
+            g2.setStroke(new BasicStroke(1));
         }
         // Purple/violet nebula wisps
-        for(int i=0;i<5;i++){
-            int nx=(int)((i*160+frameCount*0.2)%(WIDTH+300))-150;
-            int ny=80+i*120;
-            g2.setColor(new Color(80,0,140,10));
-            g2.fillOval(nx,ny,300,80);
+        for (int i = 0; i < 5; i++) {
+            int nx = (int) ((i * 160 + frameCount * 0.2) % (WIDTH + 300)) - 150;
+            int ny = 80 + i * 120;
+            g2.setColor(new Color(80, 0, 140, 10));
+            g2.fillOval(nx, ny, 300, 80);
         }
     }
 
     // SCENE 7: SOLAR STORM — inside the sun's corona, plasma eruptions
-    private void drawSceneStorm(Graphics2D g2){
-        drawSkyGradient(g2,new Color(20,4,0),new Color(60,18,0));
+    private void drawSceneStorm(Graphics2D g2) {
+        drawSkyGradient(g2, new Color(20, 4, 0), new Color(60, 18, 0));
         // Plasma wave sweeps
-        for(int i=0;i<6;i++){
-            double t=(double)(frameCount*0.008+i*0.9);
-            int wx=(int)((Math.sin(t)*0.5+0.5)*(WIDTH+200))-100;
-            int wy=(int)(i*130+Math.cos(t*1.3)*40);
-            int alpha=12+i*3;
-            g2.setColor(new Color(255,100+i*15,0,alpha));
-            g2.fillOval(wx-150,wy-40,400,100);
+        for (int i = 0; i < 6; i++) {
+            double t = (double) (frameCount * 0.008 + i * 0.9);
+            int wx = (int) ((Math.sin(t) * 0.5 + 0.5) * (WIDTH + 200)) - 100;
+            int wy = (int) (i * 130 + Math.cos(t * 1.3) * 40);
+            int alpha = 12 + i * 3;
+            g2.setColor(new Color(255, 100 + i * 15, 0, alpha));
+            g2.fillOval(wx - 150, wy - 40, 400, 100);
         }
         // Solar filaments (dark arching loops)
-        g2.setColor(new Color(150,40,0,120));
+        g2.setColor(new Color(150, 40, 0, 120));
         g2.setStroke(new BasicStroke(3f));
-        for(int i=0;i<4;i++){
-            int bx=(int)((i*180+frameCount*0.3)%(WIDTH+200))-100;
-            g2.drawArc(bx,HEIGHT/2-80+i*30,160,120,0,180);
+        for (int i = 0; i < 4; i++) {
+            int bx = (int) ((i * 180 + frameCount * 0.3) % (WIDTH + 200)) - 100;
+            g2.drawArc(bx, HEIGHT / 2 - 80 + i * 30, 160, 120, 0, 180);
         }
         g2.setStroke(new BasicStroke(1));
         // Bright plasma dots / flares
-        rand.setSeed(frameCount/3L*3);
-        for(int i=0;i<30;i++){
-            int fx=rand.nextInt(WIDTH), fy=rand.nextInt(HEIGHT);
-            int fs=1+rand.nextInt(4);
-            int falpha=40+rand.nextInt(80);
-            g2.setColor(new Color(255,200+rand.nextInt(55),50,falpha));
-            g2.fillOval(fx,fy,fs,fs);
+        rand.setSeed(frameCount / 3L * 3);
+        for (int i = 0; i < 30; i++) {
+            int fx = rand.nextInt(WIDTH), fy = rand.nextInt(HEIGHT);
+            int fs = 1 + rand.nextInt(4);
+            int falpha = 40 + rand.nextInt(80);
+            g2.setColor(new Color(255, 200 + rand.nextInt(55), 50, falpha));
+            g2.fillOval(fx, fy, fs, fs);
         }
         // Solar prominence eruptions
-        for(int i=0;i<3;i++){
-            int phase=(frameCount+i*120)%360;
-            if(phase<120){
-                float pf=(float)phase/120;
-                int px2=(int)((i+1)*WIDTH/4);
-                int ph=(int)(pf*200);
+        for (int i = 0; i < 3; i++) {
+            int phase = (frameCount + i * 120) % 360;
+            if (phase < 120) {
+                float pf = (float) phase / 120;
+                int px2 = (int) ((i + 1) * WIDTH / 4);
+                int ph = (int) (pf * 200);
                 // Eruption column
-                g2.setColor(new Color(255,(int)(120+60*pf),0,(int)(80*(1-pf))));
-                g2.fillOval(px2-20,HEIGHT-ph-40,40,(int)(ph*0.6));
+                g2.setColor(new Color(255, (int) (120 + 60 * pf), 0, (int) (80 * (1 - pf))));
+                g2.fillOval(px2 - 20, HEIGHT - ph - 40, 40, (int) (ph * 0.6));
                 // Tip glow
-                g2.setColor(new Color(255,240,100,(int)(120*(1-pf))));
-                g2.fillOval(px2-12,HEIGHT-ph-52,24,24);
+                g2.setColor(new Color(255, 240, 100, (int) (120 * (1 - pf))));
+                g2.fillOval(px2 - 12, HEIGHT - ph - 52, 24, 24);
             }
         }
         // Ground: molten surface
-        g2.setColor(new Color(80,20,0,255)); g2.fillRect(0,HEIGHT-40,WIDTH,40);
+        g2.setColor(new Color(80, 20, 0, 255));
+        g2.fillRect(0, HEIGHT - 40, WIDTH, 40);
         // Lava ripples
-        for(int i=0;i<WIDTH;i+=20){
-            int lh=(int)(6+4*Math.sin((i+frameCount*2)*0.08));
-            g2.setColor(new Color(255,80,0,180));
-            g2.fillOval(i,HEIGHT-40,18,lh*2);
+        for (int i = 0; i < WIDTH; i += 20) {
+            int lh = (int) (6 + 4 * Math.sin((i + frameCount * 2) * 0.08));
+            g2.setColor(new Color(255, 80, 0, 180));
+            g2.fillOval(i, HEIGHT - 40, 18, lh * 2);
         }
         // Scattered dim stars barely visible
-        drawStars(g2,80,-20,-60,false);
+        drawStars(g2, 80, -20, -60, false);
     }
 
     // SCENE 8: ICE PLANET — frozen tundra, aurora, frozen structures
-    private void drawSceneIce(Graphics2D g2){
-        drawSkyGradient(g2,new Color(0,4,18),new Color(5,18,35));
+    private void drawSceneIce(Graphics2D g2) {
+        drawSkyGradient(g2, new Color(0, 4, 18), new Color(5, 18, 35));
         // Aurora borealis bands
-        int[][] auroraCols={{0,200,120},{0,150,255},{80,0,200},{0,220,180}};
-        for(int band=0;band<4;band++){
-            int[] ac=auroraCols[band];
-            for(int x2=0;x2<WIDTH;x2+=2){
-                double t=(double)(frameCount*0.02+x2*0.015+band*1.2);
-                int ay=(int)(80+band*55+Math.sin(t)*30+Math.cos(t*0.7)*15);
-                int ah=(int)(20+Math.sin(t*0.5+1)*15);
-                int alpha=(int)(20+12*Math.sin(frameCount*0.04+x2*0.02+band));
-                g2.setColor(new Color(ac[0],ac[1],ac[2],Math.max(0,alpha)));
-                g2.fillRect(x2,ay,2,ah);
+        int[][] auroraCols = { { 0, 200, 120 }, { 0, 150, 255 }, { 80, 0, 200 }, { 0, 220, 180 } };
+        for (int band = 0; band < 4; band++) {
+            int[] ac = auroraCols[band];
+            for (int x2 = 0; x2 < WIDTH; x2 += 2) {
+                double t = (double) (frameCount * 0.02 + x2 * 0.015 + band * 1.2);
+                int ay = (int) (80 + band * 55 + Math.sin(t) * 30 + Math.cos(t * 0.7) * 15);
+                int ah = (int) (20 + Math.sin(t * 0.5 + 1) * 15);
+                int alpha = (int) (20 + 12 * Math.sin(frameCount * 0.04 + x2 * 0.02 + band));
+                g2.setColor(new Color(ac[0], ac[1], ac[2], Math.max(0, alpha)));
+                g2.fillRect(x2, ay, 2, ah);
             }
         }
         // Stars — blue-white tinted cold stars
-        drawStars(g2,-20,0,60,true);
+        drawStars(g2, -20, 0, 60, true);
         // Distant frozen mountains
-        g2.setColor(new Color(30,45,80,200));
-        int[] iceMx={-10,30,80,130,180,220,270,310,360,400,450,500,550,WIDTH+10};
-        int[] iceMy={HEIGHT,HEIGHT-70,HEIGHT-120,HEIGHT-80,HEIGHT-150,HEIGHT-90,HEIGHT-130,HEIGHT-70,HEIGHT-110,HEIGHT-85,HEIGHT-140,HEIGHT-75,HEIGHT-95,HEIGHT};
-        g2.fillPolygon(iceMx,iceMy,iceMx.length);
+        g2.setColor(new Color(30, 45, 80, 200));
+        int[] iceMx = { -10, 30, 80, 130, 180, 220, 270, 310, 360, 400, 450, 500, 550, WIDTH + 10 };
+        int[] iceMy = { HEIGHT, HEIGHT - 70, HEIGHT - 120, HEIGHT - 80, HEIGHT - 150, HEIGHT - 90, HEIGHT - 130,
+                HEIGHT - 70, HEIGHT - 110, HEIGHT - 85, HEIGHT - 140, HEIGHT - 75, HEIGHT - 95, HEIGHT };
+        g2.fillPolygon(iceMx, iceMy, iceMx.length);
         // Snow highlights on peaks
-        g2.setColor(new Color(200,220,255,180));
-        for(int i=1;i<iceMx.length-2;i+=2){
-            if(iceMy[i]<HEIGHT-100){
+        g2.setColor(new Color(200, 220, 255, 180));
+        for (int i = 1; i < iceMx.length - 2; i += 2) {
+            if (iceMy[i] < HEIGHT - 100) {
                 g2.fillPolygon(
-                    new int[]{iceMx[i]-12,iceMx[i],iceMx[i]+12},
-                    new int[]{iceMy[i]+20,iceMy[i],iceMy[i]+20},3);
+                        new int[] { iceMx[i] - 12, iceMx[i], iceMx[i] + 12 },
+                        new int[] { iceMy[i] + 20, iceMy[i], iceMy[i] + 20 }, 3);
             }
         }
         // Ice crystal spires in foreground
-        for(int i=0;i<10;i++){
-            int sx2=i*62+10, sh=40+i%3*30;
-            g2.setColor(new Color(140,200,255,180));
-            g2.fillPolygon(new int[]{sx2,sx2+10,sx2+20},new int[]{HEIGHT-sh,HEIGHT,HEIGHT},3);
+        for (int i = 0; i < 10; i++) {
+            int sx2 = i * 62 + 10, sh = 40 + i % 3 * 30;
+            g2.setColor(new Color(140, 200, 255, 180));
+            g2.fillPolygon(new int[] { sx2, sx2 + 10, sx2 + 20 }, new int[] { HEIGHT - sh, HEIGHT, HEIGHT }, 3);
             // Refraction shimmer
-            float shimmer=(float)(0.5+0.5*Math.sin(frameCount*0.07+i*0.8));
-            g2.setColor(new Color(200,240,255,(int)(60*shimmer)));
-            g2.fillPolygon(new int[]{sx2+2,sx2+8,sx2+14},new int[]{HEIGHT-sh+4,HEIGHT,HEIGHT},3);
+            float shimmer = (float) (0.5 + 0.5 * Math.sin(frameCount * 0.07 + i * 0.8));
+            g2.setColor(new Color(200, 240, 255, (int) (60 * shimmer)));
+            g2.fillPolygon(new int[] { sx2 + 2, sx2 + 8, sx2 + 14 }, new int[] { HEIGHT - sh + 4, HEIGHT, HEIGHT }, 3);
         }
         // Frozen ground
-        g2.setColor(new Color(120,170,220,255)); g2.fillRect(0,HEIGHT-28,WIDTH,28);
+        g2.setColor(new Color(120, 170, 220, 255));
+        g2.fillRect(0, HEIGHT - 28, WIDTH, 28);
         // Ice cracks
-        g2.setColor(new Color(180,220,255,160)); g2.setStroke(new BasicStroke(0.8f));
+        g2.setColor(new Color(180, 220, 255, 160));
+        g2.setStroke(new BasicStroke(0.8f));
         rand.setSeed(33333);
-        for(int i=0;i<15;i++){
-            int cx2=rand.nextInt(WIDTH), cy2=HEIGHT-rand.nextInt(20);
-            int cx3=cx2+rand.nextInt(50)-25, cy3=cy2+rand.nextInt(12);
-            g2.drawLine(cx2,cy2,cx3,cy3);
+        for (int i = 0; i < 15; i++) {
+            int cx2 = rand.nextInt(WIDTH), cy2 = HEIGHT - rand.nextInt(20);
+            int cx3 = cx2 + rand.nextInt(50) - 25, cy3 = cy2 + rand.nextInt(12);
+            g2.drawLine(cx2, cy2, cx3, cy3);
         }
         g2.setStroke(new BasicStroke(1));
         // Snowflakes drifting
-        rand.setSeed(frameCount/6L*6+11);
-        for(int i=0;i<35;i++){
-            int sx2=rand.nextInt(WIDTH);
-            int sy2=(rand.nextInt(HEIGHT)+frameCount*(1+rand.nextInt(2))/2)%HEIGHT;
-            g2.setColor(new Color(200,230,255,100+rand.nextInt(80)));
-            g2.fillOval(sx2,sy2,2+rand.nextInt(3),2+rand.nextInt(3));
+        rand.setSeed(frameCount / 6L * 6 + 11);
+        for (int i = 0; i < 35; i++) {
+            int sx2 = rand.nextInt(WIDTH);
+            int sy2 = (rand.nextInt(HEIGHT) + frameCount * (1 + rand.nextInt(2)) / 2) % HEIGHT;
+            g2.setColor(new Color(200, 230, 255, 100 + rand.nextInt(80)));
+            g2.fillOval(sx2, sy2, 2 + rand.nextInt(3), 2 + rand.nextInt(3));
         }
     }
 
     // SCENE 9: ALIEN JUNGLE PLANET — dense bioluminescent overgrowth
-    private void drawSceneJungle(Graphics2D g2){
-        drawSkyGradient(g2,new Color(2,10,8),new Color(8,25,14));
+    private void drawSceneJungle(Graphics2D g2) {
+        drawSkyGradient(g2, new Color(2, 10, 8), new Color(8, 25, 14));
         // Alien moon — large reddish
-        g2.setColor(new Color(200,100,60,200));
-        g2.fillOval(WIDTH-130,15,80,80);
-        g2.setColor(new Color(160,70,40,100));
-        g2.fillOval(WIDTH-120,25,30,25);
-        g2.setColor(new Color(0,0,0,80));
-        g2.fillOval(WIDTH-115,15,70,80);
+        g2.setColor(new Color(200, 100, 60, 200));
+        g2.fillOval(WIDTH - 130, 15, 80, 80);
+        g2.setColor(new Color(160, 70, 40, 100));
+        g2.fillOval(WIDTH - 120, 25, 30, 25);
+        g2.setColor(new Color(0, 0, 0, 80));
+        g2.fillOval(WIDTH - 115, 15, 70, 80);
         // Dim stars through thick atmosphere
-        drawStars(g2,-40,20,0,false);
+        drawStars(g2, -40, 20, 0, false);
         // Far jungle canopy silhouette (deep layer)
-        g2.setColor(new Color(5,22,10,220));
-        int[] farJx=new int[WIDTH/6+2], farJy=new int[WIDTH/6+2];
-        farJx[0]=0; farJy[0]=HEIGHT;
-        for(int i=1;i<WIDTH/6+1;i++){
-            farJx[i]=i*6;
-            farJy[i]=HEIGHT-80-(int)(35*Math.sin(i*0.4+wave))-((i*17)%40);
+        g2.setColor(new Color(5, 22, 10, 220));
+        int[] farJx = new int[WIDTH / 6 + 2], farJy = new int[WIDTH / 6 + 2];
+        farJx[0] = 0;
+        farJy[0] = HEIGHT;
+        for (int i = 1; i < WIDTH / 6 + 1; i++) {
+            farJx[i] = i * 6;
+            farJy[i] = HEIGHT - 80 - (int) (35 * Math.sin(i * 0.4 + wave)) - ((i * 17) % 40);
         }
-        farJx[WIDTH/6+1]=WIDTH; farJy[WIDTH/6+1]=HEIGHT;
-        g2.fillPolygon(farJx,farJy,farJx.length);
+        farJx[WIDTH / 6 + 1] = WIDTH;
+        farJy[WIDTH / 6 + 1] = HEIGHT;
+        g2.fillPolygon(farJx, farJy, farJx.length);
         // Mid jungle canopy — alien colours
-        g2.setColor(new Color(10,40,18,230));
-        int[] midJx=new int[WIDTH/4+2], midJy=new int[WIDTH/4+2];
-        midJx[0]=0; midJy[0]=HEIGHT;
-        for(int i=1;i<WIDTH/4+1;i++){
-            midJx[i]=i*4;
-            midJy[i]=HEIGHT-120-(int)(50*Math.sin(i*0.3+wave*0.5))-((i*23)%60);
+        g2.setColor(new Color(10, 40, 18, 230));
+        int[] midJx = new int[WIDTH / 4 + 2], midJy = new int[WIDTH / 4 + 2];
+        midJx[0] = 0;
+        midJy[0] = HEIGHT;
+        for (int i = 1; i < WIDTH / 4 + 1; i++) {
+            midJx[i] = i * 4;
+            midJy[i] = HEIGHT - 120 - (int) (50 * Math.sin(i * 0.3 + wave * 0.5)) - ((i * 23) % 60);
         }
-        midJx[WIDTH/4+1]=WIDTH; midJy[WIDTH/4+1]=HEIGHT;
-        g2.fillPolygon(midJx,midJy,midJx.length);
+        midJx[WIDTH / 4 + 1] = WIDTH;
+        midJy[WIDTH / 4 + 1] = HEIGHT;
+        g2.fillPolygon(midJx, midJy, midJx.length);
         // Bioluminescent tree trunks
-        for(int i=0;i<8;i++){
-            int tx2=i*80+20;
-            int th=200+((i*37)%100);
-            int tw=12+i%3*4;
+        for (int i = 0; i < 8; i++) {
+            int tx2 = i * 80 + 20;
+            int th = 200 + ((i * 37) % 100);
+            int tw = 12 + i % 3 * 4;
             // Dark trunk
-            g2.setColor(new Color(5,25,12,220));
-            g2.fillRect(tx2,HEIGHT-th,tw,th);
+            g2.setColor(new Color(5, 25, 12, 220));
+            g2.fillRect(tx2, HEIGHT - th, tw, th);
             // Glowing bark veins
-            float vg=(float)(0.4+0.6*Math.sin(frameCount*0.05+i*0.9));
-            g2.setColor(new Color(0,180,80,(int)(60*vg)));
-            g2.fillRect(tx2+tw/3,HEIGHT-th+20,2,th-20);
+            float vg = Math.max(0f, Math.min(1f, (float) (0.4 + 0.6 * Math.sin(frameCount * 0.05 + i * 0.9))));
+            g2.setColor(new Color(0, 180, 80, (int) (60 * vg)));
+            g2.fillRect(tx2 + tw / 3, HEIGHT - th + 20, 2, th - 20);
             // Canopy blob
-            g2.setColor(new Color(8,50,20,220));
-            g2.fillOval(tx2-30,HEIGHT-th-30,tw+60,50);
-            g2.setColor(new Color(15,70,30,180));
-            g2.fillOval(tx2-20,HEIGHT-th-50,tw+40,40);
+            g2.setColor(new Color(8, 50, 20, 220));
+            g2.fillOval(tx2 - 30, HEIGHT - th - 30, tw + 60, 50);
+            g2.setColor(new Color(15, 70, 30, 180));
+            g2.fillOval(tx2 - 20, HEIGHT - th - 50, tw + 40, 40);
             // Glowing canopy tips
-            g2.setColor(new Color(0,255,100,(int)(100*vg)));
-            g2.fillOval(tx2-10,HEIGHT-th-60,tw+20,25);
-            g2.setColor(new Color(0,255,100,(int)(25*vg)));
-            g2.fillOval(tx2-20,HEIGHT-th-65,tw+40,35);
+            g2.setColor(new Color(0, 255, 100, (int) (100 * vg)));
+            g2.fillOval(tx2 - 10, HEIGHT - th - 60, tw + 20, 25);
+            g2.setColor(new Color(0, 255, 100, (int) (25 * vg)));
+            g2.fillOval(tx2 - 20, HEIGHT - th - 65, tw + 40, 35);
         }
         // Floating spores drifting upward
-        rand.setSeed(frameCount/5L*5+44);
-        for(int i=0;i<25;i++){
-            int sx2=rand.nextInt(WIDTH);
-            int sy2=(HEIGHT+100-((rand.nextInt(HEIGHT)+frameCount*(1+rand.nextInt(2)))%(HEIGHT+100)));
-            float sf=(float)(0.5+0.5*Math.sin(frameCount*0.06+i));
-            g2.setColor(new Color(0,255,120,(int)(60*sf)));
-            g2.fillOval(sx2,sy2,3,3);
+        rand.setSeed(frameCount / 5L * 5 + 44);
+        for (int i = 0; i < 25; i++) {
+            int sx2 = rand.nextInt(WIDTH);
+            int sy2 = (HEIGHT + 100 - ((rand.nextInt(HEIGHT) + frameCount * (1 + rand.nextInt(2))) % (HEIGHT + 100)));
+            float sf = Math.max(0f, Math.min(1f, (float) (0.5 + 0.5 * Math.sin(frameCount * 0.06 + i))));
+            g2.setColor(new Color(0, 255, 120, Math.max(0, Math.min(255, (int) (60 * sf)))));
+            g2.fillOval(sx2, sy2, 3, 3);
         }
         // Foreground thick roots/vines
-        g2.setColor(new Color(8,30,15,240));
-        g2.fillRect(0,HEIGHT-55,WIDTH,55);
+        g2.setColor(new Color(8, 30, 15, 240));
+        g2.fillRect(0, HEIGHT - 55, WIDTH, 55);
         // Glowing ground mushrooms
-        for(int i=0;i<12;i++){
-            int mx=i*50+10;
-            float mg=(float)(0.4+0.6*Math.sin(frameCount*0.06+i*1.2));
+        for (int i = 0; i < 12; i++) {
+            int mx = i * 50 + 10;
+            float mg = Math.max(0f, Math.min(1f, (float) (0.4 + 0.6 * Math.sin(frameCount * 0.06 + i * 1.2))));
             // Cap
-            g2.setColor(new Color(0,200,80,(int)(120*mg)));
-            g2.fillOval(mx-10,HEIGHT-62,22,14);
+            g2.setColor(new Color(0, 200, 80, (int) (120 * mg)));
+            g2.fillOval(mx - 10, HEIGHT - 62, 22, 14);
             // Stalk
-            g2.setColor(new Color(0,140,50,180));
-            g2.fillRect(mx-2,HEIGHT-52,5,12);
+            g2.setColor(new Color(0, 140, 50, 180));
+            g2.fillRect(mx - 2, HEIGHT - 52, 5, 12);
             // Glow
-            g2.setColor(new Color(0,255,100,(int)(20*mg)));
-            g2.fillOval(mx-18,HEIGHT-68,38,28);
+            g2.setColor(new Color(0, 255, 100, (int) (20 * mg)));
+            g2.fillOval(mx - 18, HEIGHT - 68, 38, 28);
         }
     }
-
 
     // ── Menu ──────────────────────────────────────────────────────────
     private void drawMenu(Graphics2D g2) {
@@ -2774,31 +2919,36 @@ public class BulletHellGame extends JPanel
         int px = 10, py = 36;
         // ── Boss drop powerups (timed, show draining bar) ─────────────
         if (doubleShot)
-            px = drawHudIcon(g2, px, py, "2x",  new Color(255,200,60),  (float)doubleShotTimer/480f, false);
+            px = drawHudIcon(g2, px, py, "2x", new Color(255, 200, 60), (float) doubleShotTimer / 480f, false);
         if (hasShield)
-            px = drawHudIcon(g2, px, py, "SH",  new Color(80,180,255),  (float)shieldTimer/600f,     false);
+            px = drawHudIcon(g2, px, py, "SH", new Color(80, 180, 255), (float) shieldTimer / 600f, false);
         // ── Shop permanent upgrades (pulsing ★ bar) ────────────────────
-        if (shopSpeedBoost) px = drawHudIcon(g2, px, py, "SPD★", SHOP_ACCENT[1], 1f, true);
-        if (shopRapidFire)  px = drawHudIcon(g2, px, py, "RF★",  SHOP_ACCENT[2], 1f, true);
-        if (shopBulletTime) px = drawHudIcon(g2, px, py, "BT★",  SHOP_ACCENT[3], 1f, true);
-        if (shopScoreRush)  px = drawHudIcon(g2, px, py, "SR★",  SHOP_ACCENT[4], 1f, true);
-        if (shopPhaseShift) px = drawHudIcon(g2, px, py, "PS★",  SHOP_ACCENT[5], 1f, true);
+        if (shopSpeedBoost)
+            px = drawHudIcon(g2, px, py, "SPD★", SHOP_ACCENT[1], 1f, true);
+        if (shopRapidFire)
+            px = drawHudIcon(g2, px, py, "RF★", SHOP_ACCENT[2], 1f, true);
+        if (shopBulletTime)
+            px = drawHudIcon(g2, px, py, "BT★", SHOP_ACCENT[3], 1f, true);
+        if (shopScoreRush)
+            px = drawHudIcon(g2, px, py, "SR★", SHOP_ACCENT[4], 1f, true);
+        if (shopPhaseShift)
+            px = drawHudIcon(g2, px, py, "PS★", SHOP_ACCENT[5], 1f, true);
     }
 
     private int drawHudIcon(Graphics2D g2, int px, int py,
-                            String label, Color c, float frac, boolean permanent) {
+            String label, Color c, float frac, boolean permanent) {
         g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 170));
         g2.fillRoundRect(px, py, 46, 26, 8, 8);
         if (permanent) {
-            float pulse = 0.55f + 0.45f * (float)Math.sin(System.currentTimeMillis() * 0.004);
-            g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), (int)(180 * pulse)));
+            float pulse = 0.55f + 0.45f * (float) Math.sin(System.currentTimeMillis() * 0.004);
+            g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), (int) (180 * pulse)));
             g2.fillRoundRect(px, py + 26, 46, 4, 2, 2);
             g2.setFont(new Font("Arial", Font.PLAIN, 7));
             g2.setColor(Color.WHITE);
             g2.drawString("∞", px + 19, py + 31);
         } else {
             g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 110));
-            g2.fillRoundRect(px, py + 26, (int)(46 * Math.max(0, frac)), 4, 2, 2);
+            g2.fillRoundRect(px, py + 26, (int) (46 * Math.max(0, frac)), 4, 2, 2);
         }
         g2.setFont(new Font("Arial", Font.BOLD, label.length() > 3 ? 10 : 12));
         g2.setColor(Color.WHITE);
@@ -2911,12 +3061,13 @@ public class BulletHellGame extends JPanel
         explosionParticles.clear();
         setScene(SCENE_SPACE);
         shopSpeedBoost = false;
-        shopRapidFire  = false;
+        shopRapidFire = false;
         shopBulletTime = false;
-        shopScoreRush  = false;
+        shopScoreRush = false;
         shopPhaseShift = false;
-        powerUpDropCD  = 0;
-        for (int i=0;i<SHOP_OFFERED;i++) shopBought[i]=false;
+        powerUpDropCD = 0;
+        for (int i = 0; i < SHOP_OFFERED; i++)
+            shopBought[i] = false;
         phantomDashCD = 0;
         phantomInvinc = false;
         phantomInvincT = 0;
@@ -3014,8 +3165,13 @@ public class BulletHellGame extends JPanel
             if (btnClassBack.contains(p))
                 gameState = STATE_DIFF_SEL;
         } else if (gameState == STATE_SHOP) {
-            for (int i=0;i<SHOP_OFFERED;i++) if (btnShopItems[i].contains(p)) { buyShopItem(i); return; }
-            if (btnShopContinue.contains(p)) leaveShop();
+            for (int i = 0; i < SHOP_OFFERED; i++)
+                if (btnShopItems[i].contains(p)) {
+                    buyShopItem(i);
+                    return;
+                }
+            if (btnShopContinue.contains(p))
+                leaveShop();
         }
     }
 
@@ -3182,7 +3338,7 @@ public class BulletHellGame extends JPanel
             this.y = (int) by;
             this.waveNum = wave;
             this.isApex = (wave % 5 == 0);
-            maxHp = hp = isApex ? (10 + wave * 20) * 1.1 : (10 + wave * 20);
+            maxHp = hp = isApex ? (10 + wave * 20) * 1.1 : Math.min(125, 10 + wave * 20);
             laserInterval = isApex ? Math.max(120, 260 - wave * 8) : 999999;
             laserCooldown = isApex ? laserInterval / 2 : 999999;
         }
@@ -3250,7 +3406,7 @@ public class BulletHellGame extends JPanel
                 if (phase == PHASE_CIRCLE)
                     circleAngle = Math.atan2(by - HEIGHT / 3.0, bx - WIDTH / 2.0);
             }
-            double speedMult = isApex ? 1.4 : 1.0;
+            double speedMult = isApex ? 1.4 : Math.min(1.0, 0.6 + wave * 0.04);
             switch (phase) {
                 case PHASE_PATROL:
                     bx += vx * speedMult;
