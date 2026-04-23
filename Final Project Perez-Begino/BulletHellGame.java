@@ -142,6 +142,10 @@ public class BulletHellGame extends JPanel
     // Viper
     private final ArrayList<Snake> snakes = new ArrayList<>();
     private int viperFireCD = 0;
+    private int viperHitCount = 0;
+    private int viperPoisonStacks = 0;
+    private int viperPoisonTimer = 0;
+    private int viperPoisonTickTimer = 0;
 
     // PowerUp timers
     private boolean hasShield = false;
@@ -499,7 +503,7 @@ public class BulletHellGame extends JPanel
         // Nova laser vs boss — guard boss.alive to prevent double-kill
         if (selectedClass == CLASS_NOVA && novaLaserActive && !bossTransition && boss.alive) {
             if (laserHitsBoss(boss.getBounds())) {
-                boss.hp -= 1;
+                boss.hp -= 1.5;
                 score += 6;
                 if (boss.hp <= 0 && boss.alive) {
                     boss.alive = false; // mark immediately to prevent re-entry
@@ -605,9 +609,18 @@ public class BulletHellGame extends JPanel
                 continue;
             }
             if (!bossTransition && boss.alive && boss.getBounds().intersects(s.getBounds())) {
-                boss.hp -= 2;
+                boss.hp -= 1.5;
                 score += 15;
                 s.dead = true;
+                viperHitCount++;
+                if (viperHitCount >= 5) {
+                    viperHitCount = 0;
+                    viperPoisonStacks = Math.min(viperPoisonStacks + 1, 3);
+                    viperPoisonTimer = 360; // 6 seconds
+                    viperPoisonTickTimer = 120; // first tick in 2s
+                    pickupMsg = "POISON x" + viperPoisonStacks + "!";
+                    pickupTimer = 80;
+                }
                 if (boss.hp <= 0 && boss.alive) {
                     boss.alive = false;
                     bossDefeated();
@@ -646,6 +659,26 @@ public class BulletHellGame extends JPanel
             if (!ep.next().update())
                 ep.remove();
 
+        if (viperPoisonTimer > 0 && !bossTransition && boss.alive) {
+            viperPoisonTimer--;
+            viperPoisonTickTimer--;
+            if (viperPoisonTickTimer <= 0) {
+                viperPoisonTickTimer = 120; // tick every 2 seconds
+                double dmg = boss.maxHp * 0.03 * viperPoisonStacks;
+                boss.hp -= dmg;
+                score += (int) (dmg / 2);
+                pickupMsg = "POISON TICK -" + viperPoisonStacks * 3 + "%!";
+                pickupTimer = 60;
+                if (boss.hp <= 0 && boss.alive) {
+                    boss.alive = false;
+                    bossDefeated();
+                }
+            }
+            if (viperPoisonTimer <= 0) {
+                viperPoisonStacks = 0;
+                viperPoisonTimer = 0;
+            }
+        }
         updateScenery();
     }
 
@@ -655,6 +688,10 @@ public class BulletHellGame extends JPanel
         score += 500;
         wave++;
         bossTransition = true;
+        viperHitCount = 0;
+        viperPoisonStacks = 0;
+        viperPoisonTimer = 0;
+        viperPoisonTickTimer = 0;
         novaLaserActive = false;
         playerBullets.clear();
         enemyBullets.clear();
@@ -1648,7 +1685,7 @@ public class BulletHellGame extends JPanel
             "Charge laser.\nOne big hit.",
             "Dash+decoy.\nSHIFT=blink.",
             "Orb shield.\nDeflects bullets.",
-            "Homing snakes.\nAuto-tracks boss."
+            "Every 5 hits\n applies stacking poison.\n(3-9% boss HP,\n ticks every 2s)"
     };
     private static final Color[] CLS_COL = {
             new Color(0, 220, 255), new Color(130, 80, 255), new Color(180, 0, 255),
@@ -2130,6 +2167,10 @@ public class BulletHellGame extends JPanel
         phantomAfterT = 0;
         sentinelAngle = 0;
         viperFireCD = 0;
+        viperHitCount = 0;
+        viperPoisonStacks = 0;
+        viperPoisonTimer = 0;
+        viperPoisonTickTimer = 0;
         gameState = STATE_PLAYING;
     }
 
@@ -2640,6 +2681,37 @@ public class BulletHellGame extends JPanel
             g2.fillRoundRect((int) bx - 10, (int) by - 10, width + 20, height + 20, 22, 22);
             drawBossBody(g2, frame, pulse, baseColor);
             drawEngineTrail(g2, frame, pulse);
+            if (viperPoisonStacks > 0) {
+                // purple tint overlay
+                float poisonAlpha = Math.min(0.6f, viperPoisonStacks * 0.2f);
+                g2.setColor(new Color(120, 0, 180, (int) (poisonAlpha * 180)));
+                g2.fillRoundRect((int) bx - 5, (int) by - 5, width + 10, height + 10, 16, 16);
+                // smoke particles
+                Random pr = new Random(frame * 7 + (int) bx);
+                int smokeCount = viperPoisonStacks * 4;
+                for (int i = 0; i < smokeCount; i++) {
+                    float sf = (float) (frame * 0.04 + i * 1.3f);
+                    int sx = (int) bx + pr.nextInt(width);
+                    int sy = (int) by + (int) (((sf % 1.0f)) * (height + 30)) - 10;
+                    int sa = (int) (80 + 60 * Math.abs(Math.sin(sf)));
+                    int ssz = 6 + pr.nextInt(8);
+                    g2.setColor(new Color(140, 0, 200, sa));
+                    g2.fillOval(sx - ssz / 2, sy - ssz / 2, ssz, ssz);
+                    g2.setColor(new Color(80, 0, 120, sa / 2));
+                    g2.fillOval(sx - ssz, sy - ssz, ssz * 2, ssz * 2);
+                }
+                // poison stack indicator
+                g2.setFont(new Font("Arial", Font.BOLD, 11));
+                g2.setColor(new Color(200, 100, 255, 220));
+                String poisonLabel = "☠ x" + viperPoisonStacks;
+                g2.drawString(poisonLabel, (int) bx + width / 2 - 14, (int) by - 8);
+                // pulsing border
+                float pb = (float) (0.5 + 0.5 * Math.sin(frame * 0.2));
+                g2.setColor(new Color(160, 0, 255, (int) (80 + 80 * pb)));
+                g2.setStroke(new BasicStroke(2.5f + pb * 2f));
+                g2.drawRoundRect((int) bx - 3, (int) by - 3, width + 6, height + 6, 14, 14);
+                g2.setStroke(new BasicStroke(1));
+            }
         }
 
         private Color getBossColor() {
@@ -3012,20 +3084,7 @@ public class BulletHellGame extends JPanel
                 dead = true;
                 return;
             }
-            if (boss.alive && !bossTransition) {
-                double dx = boss.x + boss.width / 2 - x, dy = boss.y + boss.height / 2 - y;
-                double len = Math.sqrt(dx * dx + dy * dy);
-                if (len > 1) {
-                    double spd = Math.sqrt(vx * vx + vy * vy), hm = 0.12;
-                    vx = vx * (1 - hm) + (dx / len * spd) * hm;
-                    vy = vy * (1 - hm) + (dy / len * spd) * hm;
-                    double ns = Math.sqrt(vx * vx + vy * vy);
-                    if (ns > 0) {
-                        vx = vx / ns * spd;
-                        vy = vy / ns * spd;
-                    }
-                }
-            }
+            // no homing - straight shots only
             tx[tp % 12] = (int) x;
             ty2[tp % 12] = (int) y;
             tp++;
