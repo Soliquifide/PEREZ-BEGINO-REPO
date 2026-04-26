@@ -713,7 +713,7 @@ public class BulletHellGame extends JPanel
                 continue;
             }
             if (!bossTransition && boss.alive && boss.getBounds().intersects(s.getBounds())) {
-                boss.hp -= 2;
+                boss.hp -= 200;
                 score += (shopScoreRush ? 30 : 15);
                 s.dead = true;
                 damageIndicators.add(new DamageIndicator(
@@ -1189,21 +1189,21 @@ public class BulletHellGame extends JPanel
             if (frameCount % 70 == 0) {
                 for (int i = 0; i < 4; i++) {
                     double a = Math.PI / 2 * i + Math.toRadians(frameCount * 1.5);
-                    enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, Color.ORANGE, true));
+                    enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, Color.RED, true));
                 }
             }
             if (frameCount % 110 == 0) {
                 double dx = player.x - cx, dy2 = player.y - cy, len = Math.sqrt(dx * dx + dy2 * dy2);
                 if (len > 0)
-                    enemyBullets.add(new Bullet(cx, cy, dx / len * spd, dy2 / len * spd, Color.YELLOW, true));
+                    enemyBullets.add(new Bullet(cx, cy, dx / len * spd, dy2 / len * spd, Color.RED, true));
             }
         }
         // Wave 7-8: spiral pair + aimed burst (3 spread shots)
         else if (wave <= 8) {
             if (frameCount % 14 == 0) {
                 double a = Math.toRadians(frameCount * 4);
-                enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, Color.MAGENTA, true));
-                enemyBullets.add(new Bullet(cx, cy, -Math.cos(a) * spd, -Math.sin(a) * spd, Color.MAGENTA, true));
+                enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, Color.RED, true));
+                enemyBullets.add(new Bullet(cx, cy, -Math.cos(a) * spd, -Math.sin(a) * spd, Color.RED, true));
             }
             if (frameCount % 100 == 0) {
                 double dx = player.x - cx, dy2 = player.y - cy, len = Math.sqrt(dx * dx + dy2 * dy2);
@@ -1211,29 +1211,26 @@ public class BulletHellGame extends JPanel
                     double base = Math.atan2(dy2, dx);
                     for (int s = -1; s <= 1; s++)
                         enemyBullets.add(new Bullet(cx, cy, Math.cos(base + s * 0.22) * spd,
-                                Math.sin(base + s * 0.22) * spd, Color.ORANGE, true));
+                                Math.sin(base + s * 0.22) * spd, Color.RED, true));
                 }
             }
-        }
-        // Wave 9: flower pattern
-        else if (wave <= 9) {
-            if (frameCount % 30 == 0) {
-                int ring = (frameCount / 30) % 3;
-                int cnt = 8 + ring * 2;
+        } else if (wave <= 9) {
+            if (frameCount % 55 == 0) {
+                int ring = (frameCount / 55) % 3;
+                int cnt = 7 + ring * 1;
                 double rot = Math.toRadians(ring * 20 + frameCount * 0.5);
                 for (int i = 0; i < cnt; i++) {
                     double a = 2 * Math.PI * i / cnt + rot;
-                    enemyBullets.add(
-                            new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, new Color(255, 100, 200), true));
+                    enemyBullets.add(new Bullet(cx, cy, Math.cos(a) * spd, Math.sin(a) * spd, Color.RED, true));
                 }
             }
-            if (frameCount % 80 == 0) {
+            if (frameCount % 120 == 0) {
                 double dx = player.x - cx, dy2 = player.y - cy, len = Math.sqrt(dx * dx + dy2 * dy2);
                 if (len > 0) {
                     double base = Math.atan2(dy2, dx);
                     for (int s = -1; s <= 1; s++)
                         enemyBullets.add(new Bullet(cx, cy, Math.cos(base + s * 0.18) * spd,
-                                Math.sin(base + s * 0.18) * spd, Color.YELLOW, true));
+                                Math.sin(base + s * 0.18) * spd, Color.RED, true));
                 }
             }
         }
@@ -2502,7 +2499,7 @@ public class BulletHellGame extends JPanel
 
     private void drawSceneJapan(Graphics2D g2) {
         // Calm day/dusk Japan — soft pink sky
-        drawSkyGradient(g2, new Color(10, 40, 15), new Color(20, 60, 25));
+        drawSkyGradient(g2, new Color(100, 160, 210), new Color(160, 200, 230));
 
         // Soft sun
         g2.setColor(new Color(255, 220, 180, 60));
@@ -3054,7 +3051,7 @@ public class BulletHellGame extends JPanel
                     : (!novaLaserActive && novaCooldownTimer == 0);
             if (canShow) {
                 int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
-                g2.setColor(new Color(0, 200, 255, 30));
+                g2.setColor(new Color(255, 50, 50, 200));
                 g2.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f,
                         new float[] { 6f, 8f }, frameCount * 0.5f));
                 g2.drawLine(pcx, pcy, mouseX, mouseY);
@@ -3139,12 +3136,17 @@ public class BulletHellGame extends JPanel
         if (bossTransition) {
             g2.setColor(new Color(0, 0, 0, 170));
             g2.fillRect(0, 0, WIDTH, HEIGHT);
-            boolean nextIsApex = (wave % 5 == 0);
-            g2.setColor(nextIsApex ? new Color(255, 160, 0) : Color.YELLOW);
+            boolean nextIsApex = (wave % 5 == 0 && wave != 10);
+            g2.setColor(wave == 10 ? new Color(255, 200, 80) : nextIsApex ? new Color(255, 160, 0) : Color.YELLOW);
             g2.setFont(new Font("Arial", Font.BOLD, 46));
             String wt = "WAVE " + wave + "!";
             g2.drawString(wt, WIDTH / 2 - g2.getFontMetrics().stringWidth(wt) / 2, HEIGHT / 2 - 20);
-            if (nextIsApex) {
+            if (wave == 10) {
+                g2.setFont(new Font("Arial", Font.BOLD, 22));
+                g2.setColor(new Color(255, 180, 60));
+                String kWarn = "🦊 KITSUNE INCOMING 🦊";
+                g2.drawString(kWarn, WIDTH / 2 - g2.getFontMetrics().stringWidth(kWarn) / 2, HEIGHT / 2 + 20);
+            } else if (nextIsApex) {
                 g2.setFont(new Font("Arial", Font.BOLD, 22));
                 g2.setColor(new Color(255, 80, 60));
                 String apexWarn = "⚡ APEX BOSS INCOMING ⚡";
@@ -3599,6 +3601,8 @@ public class BulletHellGame extends JPanel
         boolean laserActive = false;
         double beamAngle = Math.PI / 2, sweepDir = 1;
         int channelingBeamWidth = 2, laserCooldown = 0, laserInterval, apexLaserCycle = 0;
+        int kitsuneRestTimer = 0;
+        boolean kitsuneResting = false;
 
         Boss(int bx2, int by2, int wave) {
             this.bx = bx2;
@@ -3676,7 +3680,18 @@ public class BulletHellGame extends JPanel
                 if (phase == PHASE_CIRCLE)
                     circleAngle = Math.atan2(by - HEIGHT / 3.0, bx - WIDTH / 2.0);
             }
-            double speedMult = isApex ? 1.4 : Math.min(1.0, 0.6 + wave * 0.04);
+            if (waveNum == 10) {
+                kitsuneRestTimer++;
+                if (!kitsuneResting && kitsuneRestTimer >= 420) { // 7 seconds (60fps x 7)
+                    kitsuneResting = true;
+                    kitsuneRestTimer = 0;
+                } else if (kitsuneResting && kitsuneRestTimer >= 420) { // 7 seconds rest
+                    kitsuneResting = false;
+                    kitsuneRestTimer = 0;
+                }
+            }
+            double speedMult = isApex ? 1.4
+                    : waveNum == 10 ? (kitsuneResting ? 0.08 : 0.5) : Math.min(1.0, 0.6 + waveNum * 0.04);
             switch (phase) {
                 case PHASE_PATROL:
                     bx += vx * speedMult;
@@ -3724,7 +3739,7 @@ public class BulletHellGame extends JPanel
                 by = 35;
             } else {
                 bx = Math.max(5, Math.min(WIDTH - 5 - width, bx));
-                by = Math.max(20, Math.min(HEIGHT / 2.5, by));
+                by = waveNum == 10 ? Math.max(20, Math.min(80, by)) : Math.max(20, Math.min(HEIGHT / 2.5, by));
             }
             x = (int) bx;
             y = (int) by;
@@ -4543,10 +4558,30 @@ public class BulletHellGame extends JPanel
                 g2.fillOval(cxb - 7, (int) by + height / 2 - 5, 14, 10);
 
                 // Fur outline
-                g2.setColor(new Color(180, 160, 130, 70));
-                g2.setStroke(new BasicStroke(1.8f));
-                g2.drawRoundRect((int) bx + 4, (int) by + 8, width - 8, height - 8, 18, 18);
-                g2.setStroke(new BasicStroke(1));
+                if (kitsuneResting) {
+                    float zz = (float) (0.5 + 0.5 * Math.sin(frame * 0.15));
+                    // Simple blue border pulse — no fill, no loop
+                    g2.setColor(new Color(100, 140, 255, (int) (100 * zz)));
+                    g2.setStroke(new BasicStroke(3f));
+                    g2.drawRoundRect((int) bx - 6, (int) by - 16, width + 12, height + 22, 20, 20);
+                    g2.setStroke(new BasicStroke(1));
+                    // Closed eye lines
+                    g2.setColor(new Color(60, 80, 180, 200));
+                    g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawLine(cxb - 19, (int) by + 5, cxb - 8, (int) by + 5);
+                    g2.drawLine(cxb + 8, (int) by + 5, cxb + 19, (int) by + 5);
+                    g2.setStroke(new BasicStroke(1));
+                    // 3 staggered Z's — no loop, no trig per sparkle
+                    g2.setFont(new Font("Arial", Font.BOLD, 10));
+                    g2.setColor(new Color(180, 210, 255, (int) (140 * zz)));
+                    g2.drawString("z", cxb + 14, (int) by - 8);
+                    g2.setFont(new Font("Arial", Font.BOLD, 14));
+                    g2.setColor(new Color(160, 200, 255, (int) (140 * zz)));
+                    g2.drawString("z", cxb + 20, (int) by - 22);
+                    g2.setFont(new Font("Arial", Font.BOLD, 19));
+                    g2.setColor(new Color(140, 180, 255, (int) (140 * zz)));
+                    g2.drawString("Z", cxb + 26, (int) by - 38);
+                }
             } else {
                 // ── DEFAULT boss for all other waves ──
                 Color hullColor = new Color(
@@ -4933,8 +4968,8 @@ public class BulletHellGame extends JPanel
 
     class KitsuneLanceBullet extends Bullet {
         double speed;
-        static final double INITIAL_SPEED = 16.0;
-        static final double MIN_SPEED = 1.8;
+        static final double INITIAL_SPEED = 5.0;
+        static final double MIN_SPEED = 4.5;
         static final double DECEL = 0.88;
         final java.util.Deque<double[]> trail = new java.util.ArrayDeque<>();
 
@@ -4950,7 +4985,8 @@ public class BulletHellGame extends JPanel
             trail.addFirst(new double[] { x, y });
             if (trail.size() > 12)
                 trail.removeLast();
-            if (speed > MIN_SPEED) {
+            double slowThreshold = HEIGHT * 0.8;
+            if (speed > MIN_SPEED && y >= slowThreshold) {
                 speed = Math.max(MIN_SPEED, speed * DECEL);
                 double len = Math.sqrt(dx * dx + dy * dy);
                 if (len > 0.001) {
