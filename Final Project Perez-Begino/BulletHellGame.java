@@ -42,9 +42,8 @@ public class BulletHellGame extends JPanel
     static final int CLASS_MACHINE_GUNNER = 0;
     static final int CLASS_NOVA = 1;
     static final int CLASS_PHANTOM = 2;
-    static final int CLASS_SENTINEL = 3;
-    static final int CLASS_VIPER = 4;
-    static final int CLASS_COUNT = 4;
+    static final int CLASS_VIPER = 3;
+static final int CLASS_COUNT = 4;
 
     static final int NOVA_CHARGE_FRAMES = 180;
     static final int NOVA_COOLDOWN_FRAMES = 60;
@@ -53,8 +52,7 @@ public class BulletHellGame extends JPanel
     // Phantom
     static final int PHANTOM_DASH_CD = 180;
     static final int PHANTOM_DECOY_LIFE = 120;
-    // Sentinel
-    static final int SENTINEL_ORB_COUNT = 4;
+
     // Viper
     static final int VIPER_FIRE_RATE = 30;
     static final int VIPER_MAX_SNAKES = 6;
@@ -224,7 +222,7 @@ public class BulletHellGame extends JPanel
     private int phantomBurstCount = 0, phantomBurstCD = 0;
 
     // Sentinel
-    private double sentinelAngle = 0;
+    
 
     // Viper
     private final ArrayList<Snake> snakes = new ArrayList<>();
@@ -525,7 +523,7 @@ public class BulletHellGame extends JPanel
             soundCooldown--;
 
         boolean wantsFire = (fireMode == FIRE_SPACE && keys[KeyEvent.VK_SPACE])
-                || (fireMode == FIRE_MOUSE && mouseFireHeld);
+              || fireMode == FIRE_MOUSE;
         int baseSpd = player.speed + (shopSpeedBoost ? 2 : 0);
         int spd = baseSpd;
 
@@ -545,11 +543,6 @@ public class BulletHellGame extends JPanel
             case CLASS_PHANTOM:
                 firingThisFrame = wantsFire;
                 updatePhantom(wantsFire);
-                break;
-            case CLASS_SENTINEL:
-                firingThisFrame = false;
-                updateSentinel(wantsFire);
-                spd = Math.max(2, (int) (spd * 0.80));
                 break;
             case CLASS_VIPER:
                 firingThisFrame = wantsFire;
@@ -759,28 +752,7 @@ public class BulletHellGame extends JPanel
         }
 
         // Sentinel orb bullet-reflect
-        if (selectedClass == CLASS_SENTINEL) {
-            int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
-            for (int i = enemyBullets.size() - 1; i >= 0; i--) {
-                Bullet b = enemyBullets.get(i);
-                for (int o = 0; o < SENTINEL_ORB_COUNT; o++) {
-                    double a = sentinelAngle + 2 * Math.PI * o / SENTINEL_ORB_COUNT;
-                    double ox = pcx + Math.cos(a) * 32, oy = pcy + Math.sin(a) * 32;
-                    if (Math.sqrt((b.x - ox) * (b.x - ox) + (b.y - oy) * (b.y - oy)) < 10) {
-                        double tx2 = boss.x + boss.width / 2 - b.x, ty2 = boss.y + boss.height / 2 - b.y;
-                        double tl = Math.sqrt(tx2 * tx2 + ty2 * ty2);
-                        if (tl > 0) {
-                            b.dx = tx2 / tl * 6;
-                            b.dy = ty2 / tl * 6;
-                            b.enemy = false;
-                        }
-                        playerBullets.add(b);
-                        enemyBullets.remove(i);
-                        break;
-                    }
-                }
-            }
-        }
+
 
         // Explosion particles
         Iterator<ExplosionParticle> ep = explosionParticles.iterator();
@@ -1117,40 +1089,7 @@ public class BulletHellGame extends JPanel
             phantomBurstCount = 0;
     }
 
-    // ── Sentinel ──────────────────────────────────────────────────────
-    private void updateSentinel(boolean wantsFire) {
-        sentinelAngle += 0.04 + (wantsFire ? 0.06 : 0);
-        if ((keys[KeyEvent.VK_SHIFT] || keys[KeyEvent.VK_Z]) && frameCount % 120 == 0) {
-            int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
-            for (Bullet b : enemyBullets) {
-                double dx = b.x - pcx, dy2 = b.y - pcy, len = Math.sqrt(dx * dx + dy2 * dy2);
-                if (len < 100 && len > 0) {
-                    b.dx += dx / len * 5;
-                    b.dy += dy2 / len * 5;
-                }
-            }
-            score += 20;
-            pickupMsg = "PULSE!";
-            pickupTimer = 50;
-            shakeTimer = 10;
-            shakeIntensity = 4;
-        }
-        int rate = Math.max(20, 35);
-        if (frameCount % rate == 0) {
-            int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
-            double dx = mouseX - pcx, dy = mouseY - pcy, len = Math.sqrt(dx * dx + dy * dy), bs = 9;
-            double bvx = 0, bvy = -bs;
-            if (len > 1) {
-                bvx = (dx / len) * bs;
-                bvy = (dy / len) * bs;
-            }
-            playerBullets.add(new Bullet(pcx, pcy, bvx * 1.2, bvy * 1.2, new Color(80, 255, 200), false));
-            if (soundCooldown == 0) {
-                playSpacegunSound();
-                soundCooldown = rate;
-            }
-        }
-    }
+   
 
     // ── Viper ─────────────────────────────────────────────────────────
     private void updateViper(boolean wantsFire) {
@@ -1465,7 +1404,6 @@ public class BulletHellGame extends JPanel
     }
 
     private void updateScenery() {
-        sentinelAngle += 0.04;
         if (phantomDecoyT > 0)
             phantomDecoyT--;
         if (phantomAfterT > 0)
@@ -2960,14 +2898,6 @@ g2.setStroke(new BasicStroke(sel ? 2.2f : 1.4f));
                 g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 60));
                 g2.fillPolygon(new int[] { scx + 5, scx - 5, scx + 15 }, new int[] { sy + 3, sy + 23, sy + 23 }, 3);
                 break;
-            case CLASS_SENTINEL:
-                g2.fillPolygon(new int[] { scx, scx - 9, scx + 9 }, new int[] { sy, sy + 22, sy + 22 }, 3);
-                g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 130));
-                for (int o = 0; o < 4; o++) {
-                    double a = sentinelAngle + Math.PI * o / 2;
-                    g2.fillOval((int) (scx + Math.cos(a) * 15) - 4, (int) (sy + 11 + Math.sin(a) * 10) - 4, 8, 8);
-                }
-                break;
             case CLASS_VIPER:
                 g2.fillPolygon(new int[] { scx, scx - 8, scx + 8 }, new int[] { sy, sy + 22, sy + 22 }, 3);
                 for (int i2 = 0; i2 < 3; i2++) {
@@ -3088,19 +3018,7 @@ g2.setStroke(new BasicStroke(sel ? 2.2f : 1.4f));
             di.draw(g2);
 
         // Sentinel orb FX
-        if (selectedClass == CLASS_SENTINEL && player.alive) {
-            int pcx2 = player.x + player.size / 2, pcy2 = player.y + player.size / 2;
-            for (int o = 0; o < SENTINEL_ORB_COUNT; o++) {
-                double a = sentinelAngle + 2 * Math.PI * o / SENTINEL_ORB_COUNT;
-                int ox = (int) (pcx2 + Math.cos(a) * 32), oy = (int) (pcy2 + Math.sin(a) * 32);
-                g2.setColor(new Color(80, 255, 200, 160));
-                g2.fillOval(ox - 7, oy - 7, 14, 14);
-                g2.setColor(new Color(180, 255, 220, 100));
-                g2.setStroke(new BasicStroke(1.5f));
-                g2.drawOval(ox - 7, oy - 7, 14, 14);
-                g2.setStroke(new BasicStroke(1));
-            }
-        }
+
         // Phantom decoy FX
         if (selectedClass == CLASS_PHANTOM && phantomDecoyT > 0) {
             float da = (float) phantomDecoyT / PHANTOM_DECOY_LIFE;
@@ -3810,7 +3728,6 @@ g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
         phantomDecoyY = -999;
         phantomDecoyT = 0;
         phantomAfterT = 0;
-        sentinelAngle = 0;
         viperFireCD = 0;
         viperHitCount = 0;
         viperPoisonStacks = 0;
@@ -3869,13 +3786,6 @@ g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
     @Override
     public void mouseClicked(MouseEvent e) {
         Point p = e.getPoint();
-        if (gameState == STATE_PLAYING && fireMode == FIRE_MOUSE && e.getButton() == MouseEvent.BUTTON1) {
-            mouseFireHeld = true;
-            Timer stopFire = new Timer(16, ev -> mouseFireHeld = false);
-            stopFire.setRepeats(false);
-            stopFire.start();
-            return;
-        }
         if (gameState == STATE_GAME_OVER) {
     int px = WIDTH/2-160, pw = 320;
     // calculate hy same as drawGameOver — approximate button Y positions
@@ -3983,8 +3893,8 @@ gameState = STATE_GAME_OVER;
     @Override
     public void mousePressed(MouseEvent e) {
         if (e.getButton() == MouseEvent.BUTTON1) {
-            if (gameState == STATE_PLAYING && fireMode != FIRE_MOUSE)
-                mouseFireHeld = false;
+            if (gameState == STATE_PLAYING)
+                mouseFireHeld = true;
             if (gameState == STATE_SETTINGS && sliderTrack.contains(e.getPoint()))
                 draggingSlider = true;
         }
@@ -4093,9 +4003,7 @@ gameState = STATE_GAME_OVER;
                     case CLASS_PHANTOM:
                         shipColor = new Color(180, 0, 255);
                         break;
-                    case CLASS_SENTINEL:
-                        shipColor = new Color(80, 255, 200);
-                        break;
+                    
                     case CLASS_VIPER:
                         shipColor = new Color(0, 255, 100);
                         break;
