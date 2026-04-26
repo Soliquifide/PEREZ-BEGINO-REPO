@@ -713,7 +713,7 @@ public class BulletHellGame extends JPanel
                 continue;
             }
             if (!bossTransition && boss.alive && boss.getBounds().intersects(s.getBounds())) {
-                boss.hp -= 200;
+                boss.hp -= 2;
                 score += (shopScoreRush ? 30 : 15);
                 s.dead = true;
                 damageIndicators.add(new DamageIndicator(
@@ -2502,7 +2502,7 @@ public class BulletHellGame extends JPanel
 
     private void drawSceneJapan(Graphics2D g2) {
         // Calm day/dusk Japan — soft pink sky
-        drawSkyGradient(g2, new Color(180, 120, 160), new Color(220, 170, 190));
+        drawSkyGradient(g2, new Color(10, 40, 15), new Color(20, 60, 25));
 
         // Soft sun
         g2.setColor(new Color(255, 220, 180, 60));
