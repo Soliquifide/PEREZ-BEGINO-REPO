@@ -21,6 +21,7 @@ public class BulletHellGame extends JPanel
     static final int STATE_PLAYING = 3;
     static final int STATE_GAME_OVER = 4;
     static final int STATE_SHOP = 7;
+    static final int STATE_PAUSE = 8;
 
     static final int FIRE_MOUSE = 0;
     static final int FIRE_SPACE = 1;
@@ -272,25 +273,37 @@ public class BulletHellGame extends JPanel
 
     private final Rectangle btnFireMouse = new Rectangle(WIDTH / 2 - 120, 175, 240, 46);
     private final Rectangle btnFireSpace = new Rectangle(WIDTH / 2 - 120, 231, 240, 46);
-    private final Rectangle btnMusicToggle = new Rectangle(WIDTH / 2 - 120, 375, 240, 46);
+    private final Rectangle btnMusicToggle = new Rectangle(WIDTH / 2 - 120, 355, 240, 46);
     private final Rectangle sliderTrack = new Rectangle(WIDTH / 2 - 110, 440, 220, 18);
     private final Rectangle btnSettBack = new Rectangle(WIDTH / 2 - 100, 700, 200, 50);
+    // Pause menu buttons
+    private final Rectangle btnPauseResume   = new Rectangle(WIDTH / 2 - 110, 250, 220, 50);
+    private final Rectangle btnPauseSettings = new Rectangle(WIDTH / 2 - 110, 315, 220, 50);
+    private final Rectangle btnPauseQuit     = new Rectangle(WIDTH / 2 - 110, 380, 220, 50);
+    private boolean pauseInSettings = false;
+    private boolean pauseConfirmQuit = false;
+    private final Rectangle btnPauseConfirmYes = new Rectangle(WIDTH/2 - 110, 315, 220, 50);
+    private final Rectangle btnPauseConfirmNo  = new Rectangle(WIDTH/2 - 110, 380, 220, 50);
 
     private final Rectangle btnDiffEasy = new Rectangle(WIDTH / 2 - 120, 300, 240, 80);
     private final Rectangle btnDiffNormal = new Rectangle(WIDTH / 2 - 120, 400, 240, 80);
     private final Rectangle btnDiffHard = new Rectangle(WIDTH / 2 - 120, 500, 240, 80);
-    private final Rectangle btnDiffBack = new Rectangle(WIDTH / 2 - 100, 640, 200, 50);
+    private final Rectangle btnDiffBack = new Rectangle(WIDTH / 2 - 100, 610, 200, 46);
 
-    private final Rectangle btnClassBack = new Rectangle(WIDTH / 2 - 100, 660, 200, 50);
+    private final Rectangle btnClassBack = new Rectangle(WIDTH / 2 - 100, 600, 200, 46);
     // 5 class cards in a single row (centered)
-    private static final int CW = 108, CH = 200, CGAP = 10;
-    private static final int CROW1Y = 140;
+    // Row 1: 3 cards, Row 2: 2 cards centered — fills the screen properly
+    private static final int CW = 176, CH = 240, CGAP = 10;
+    private static final int CW2 = 240, CH2 = 220, CGAP2 = 16;
+    private static final int CROW1Y = 108, CROW2Y = 366;
+    private static final int ROW1X = (WIDTH - CW*3 - CGAP*2) / 2;
+    private static final int ROW2X = (WIDTH - CW2*2 - CGAP2) / 2;
     private final Rectangle[] btnClass = {
-            new Rectangle(WIDTH / 2 - (CW * 5 + CGAP * 4) / 2 + 0 * (CW + CGAP), CROW1Y, CW, CH),
-            new Rectangle(WIDTH / 2 - (CW * 5 + CGAP * 4) / 2 + 1 * (CW + CGAP), CROW1Y, CW, CH),
-            new Rectangle(WIDTH / 2 - (CW * 5 + CGAP * 4) / 2 + 2 * (CW + CGAP), CROW1Y, CW, CH),
-            new Rectangle(WIDTH / 2 - (CW * 5 + CGAP * 4) / 2 + 3 * (CW + CGAP), CROW1Y, CW, CH),
-            new Rectangle(WIDTH / 2 - (CW * 5 + CGAP * 4) / 2 + 4 * (CW + CGAP), CROW1Y, CW, CH),
+            new Rectangle(ROW1X + 0*(CW+CGAP),    CROW1Y, CW,  CH),
+            new Rectangle(ROW1X + 1*(CW+CGAP),    CROW1Y, CW,  CH),
+            new Rectangle(ROW1X + 2*(CW+CGAP),    CROW1Y, CW,  CH),
+            new Rectangle(ROW2X + 0*(CW2+CGAP2),  CROW2Y, CW2, CH2),
+            new Rectangle(ROW2X + 1*(CW2+CGAP2),  CROW2Y, CW2, CH2),
     };
 
     // =================================================================
@@ -1502,6 +1515,10 @@ public class BulletHellGame extends JPanel
                 break;
             case STATE_SHOP:
                 drawShop(g2);
+                break;
+            case STATE_PAUSE:
+                drawGame(g2);
+                drawPause(g2);
                 break;
             case STATE_GAME_OVER:
                 drawGame(g2);
@@ -2728,9 +2745,10 @@ public class BulletHellGame extends JPanel
         g2.setColor(new Color(160, 160, 230));
         String sub = "SURVIVE  THE  ONSLAUGHT";
         g2.drawString(sub, WIDTH / 2 - g2.getFontMetrics().stringWidth(sub) / 2, 230);
-        drawBtn(g2, btnStart, "START", true);
+        drawBtn(g2, btnStart,    "START",    true);
         drawBtn(g2, btnSettings, "SETTINGS", true);
-        drawBtn(g2, btnQuit, "QUIT", true);
+        drawBtn(g2, btnQuit,     "QUIT",     true);
+        // Drawn icons (no Unicode)
         g2.setFont(new Font("Arial", Font.PLAIN, 12));
         g2.setColor(new Color(80, 80, 120));
         g2.drawString("v4.4", WIDTH - 40, HEIGHT - 10);
@@ -2760,6 +2778,10 @@ public class BulletHellGame extends JPanel
                 + "   Aim: Mouse";
         g2.drawString(ctrl, WIDTH / 2 - g2.getFontMetrics().stringWidth(ctrl) / 2, 510);
         drawBtn(g2, btnSettBack, "BACK", true);
+        g2.setColor(new Color(0, 210, 255, 200));
+        g2.fillPolygon(
+            new int[]{btnSettBack.x+18, btnSettBack.x+28, btnSettBack.x+28},
+            new int[]{btnSettBack.y+25, btnSettBack.y+18, btnSettBack.y+32}, 3);;
     }
 
     private void drawVolumeSlider(Graphics2D g2) {
@@ -2796,28 +2818,62 @@ public class BulletHellGame extends JPanel
         drawDiffBtn(g2, btnDiffNormal, "NORMAL", new Color(0, 180, 255), "Standard pace", "3 lives", difficulty == 1);
         drawDiffBtn(g2, btnDiffHard, "HARD", new Color(255, 80, 60), "Faster bullets", "2 lives", difficulty == 2);
         drawBtn(g2, btnDiffBack, "BACK", true);
+        g2.setColor(new Color(0, 210, 255, 200));
+        g2.fillPolygon(
+            new int[]{btnDiffBack.x+18, btnDiffBack.x+28, btnDiffBack.x+28},
+            new int[]{btnDiffBack.y+25, btnDiffBack.y+18, btnDiffBack.y+32}, 3);
     }
 
     private void drawDiffBtn(Graphics2D g2, Rectangle r, String title, Color accent, String l1, String l2,
             boolean sel) {
+        // Outer glow ONLY when selected
         if (sel) {
-            g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 40));
-            g2.fillRoundRect(r.x - 5, r.y - 5, r.width + 10, r.height + 10, 16, 16);
+            for (int glow = 4; glow >= 1; glow--) {
+                g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 9 * glow));
+                g2.fillRoundRect(r.x - glow*3, r.y - glow*3, r.width + glow*6, r.height + glow*6, 18, 18);
+            }
         }
-        g2.setColor(sel ? new Color(15, 20, 60) : new Color(10, 10, 30));
+        // Body — nearly black when unselected, dark navy when selected
+        g2.setColor(sel ? new Color(10, 14, 40) : new Color(5, 5, 12));
         g2.fillRoundRect(r.x, r.y, r.width, r.height, 12, 12);
-        g2.setColor(accent);
-        g2.setStroke(new BasicStroke(sel ? 2.5f : 1.2f));
+        // Top shimmer only when selected
+        if (sel) {
+            g2.setPaint(new GradientPaint(r.x, r.y, new Color(255,255,255,18), r.x, r.y+r.height, new Color(255,255,255,0)));
+            g2.fillRoundRect(r.x, r.y, r.width, r.height/2, 12, 12);
+        }
+        // Border — bright accent when selected, barely visible when not
+        g2.setColor(sel ? accent : new Color(accent.getRed()/5, accent.getGreen()/5, accent.getBlue()/5, 80));
+        g2.setStroke(new BasicStroke(sel ? 2.2f : 0.8f));
         g2.drawRoundRect(r.x, r.y, r.width, r.height, 12, 12);
         g2.setStroke(new BasicStroke(1));
+        // Left accent bar only when selected
+        if (sel) {
+            g2.setColor(accent);
+            g2.fillRoundRect(r.x, r.y + 6, 4, r.height - 12, 3, 3);
+        }
+        // Title — white when selected, dim when not
         g2.setFont(new Font("Arial", Font.BOLD, 20));
-        g2.setColor(sel ? Color.WHITE : new Color(180, 180, 220));
+        g2.setColor(sel ? Color.WHITE : new Color(60, 60, 90));
         FontMetrics fm = g2.getFontMetrics();
         g2.drawString(title, r.x + r.width / 2 - fm.stringWidth(title) / 2, r.y + 28);
+        // Bullet points
         g2.setFont(new Font("Arial", Font.PLAIN, 13));
-        g2.setColor(sel ? new Color(210, 230, 255) : new Color(110, 110, 160));
-        g2.drawString("• " + l1, r.x + 20, r.y + 50);
-        g2.drawString("• " + l2, r.x + 20, r.y + 68);
+        g2.setColor(sel ? new Color(200, 220, 255) : new Color(40, 40, 65));
+        g2.drawString("- " + l1, r.x + 20, r.y + 50);
+        g2.drawString("- " + l2, r.x + 20, r.y + 68);
+        // SELECTED badge on right side
+        if (sel) {
+            g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 35));
+            g2.fillRoundRect(r.x + r.width - 82, r.y + r.height/2 - 9, 72, 18, 6, 6);
+            g2.setColor(accent);
+            g2.setStroke(new BasicStroke(1f));
+            g2.drawRoundRect(r.x + r.width - 82, r.y + r.height/2 - 9, 72, 18, 6, 6);
+            g2.setStroke(new BasicStroke(1));
+            g2.setFont(new Font("Arial", Font.BOLD, 9));
+            g2.setColor(accent);
+            FontMetrics sfm = g2.getFontMetrics();
+            g2.drawString("SELECTED", r.x + r.width - 82 + (72 - sfm.stringWidth("SELECTED"))/2, r.y + r.height/2 + 3);
+        }
     }
 
     // ── Class select (5 cards, single row, no DEF stat) ──────────────
@@ -2848,6 +2904,10 @@ public class BulletHellGame extends JPanel
         for (int i = 0; i < CLASS_COUNT; i++)
             drawSmallClassCard(g2, btnClass[i], i, selectedClass == i);
         drawBtn(g2, btnClassBack, "BACK", true);
+        g2.setColor(new Color(0, 210, 255, 200));
+        g2.fillPolygon(
+            new int[]{btnClassBack.x+18, btnClassBack.x+28, btnClassBack.x+28},
+            new int[]{btnClassBack.y+25, btnClassBack.y+18, btnClassBack.y+32}, 3);;
     }
 
     private void drawSmallClassCard(Graphics2D g2, Rectangle r, int id, boolean sel) {
@@ -2939,10 +2999,12 @@ public class BulletHellGame extends JPanel
             }
         }
         if (sel) {
-            g2.setFont(new Font("Courier New", Font.BOLD, 8));
+            g2.setFont(new Font("Arial", Font.BOLD, 12));
             g2.setColor(accent);
-            String st = "▶ CLICK START";
-            g2.drawString(st, r.x + r.width / 2 - g2.getFontMetrics().stringWidth(st) / 2, r.y + r.height - 4);
+            String st = "CLICK TO START";
+            int stX = r.x + r.width/2 - g2.getFontMetrics().stringWidth(st)/2 + 6;
+            g2.drawString(st, stX, r.y + r.height - 4);
+            g2.fillPolygon(new int[]{stX-10,stX-10,stX-2}, new int[]{r.y+r.height-13,r.y+r.height-3,r.y+r.height-8}, 3);
         }
     }
 
@@ -3236,7 +3298,45 @@ public class BulletHellGame extends JPanel
         g2.setColor(new Color(90, 160, 120));
         g2.drawString("SHOP (★ = permanent): SPD RF BT SR PS", lx, ly + 12);
     }
-
+  
+    private void drawPause(Graphics2D g2) {
+        g2.setColor(new Color(0, 0, 0, 180));
+        g2.fillRect(0, 0, WIDTH, HEIGHT);
+        int px = WIDTH/2 - 140, py = 150, pw = 280, ph = 300;
+        g2.setColor(new Color(8, 8, 28, 245));
+        g2.fillRoundRect(px, py, pw, ph, 18, 18);
+        g2.setColor(new Color(0, 180, 255, 80));
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRoundRect(px, py, pw, ph, 18, 18);
+        g2.setStroke(new BasicStroke(1));
+        g2.setFont(new Font("Arial", Font.BOLD, 34));
+        g2.setPaint(new GradientPaint(0, 170, new Color(80,220,255), 0, 210, new Color(120,60,255)));
+        String title = "PAUSED";
+        g2.drawString(title, WIDTH/2 - g2.getFontMetrics().stringWidth(title)/2, 205);
+        g2.setColor(new Color(0, 160, 255, 60));
+        g2.fillRect(WIDTH/2 - 100, 215, 200, 1);
+        if (!pauseConfirmQuit) {
+            drawBtn(g2, btnPauseResume,   "RESUME",   true);
+            drawBtn(g2, btnPauseSettings, "SETTINGS", true);
+            drawBtn(g2, btnPauseQuit,     "QUIT", true);
+            
+            g2.setFont(new Font("Arial", Font.PLAIN, 11));
+            g2.setColor(new Color(80, 80, 130));
+            String hint = "ESC to resume";
+            g2.drawString(hint, WIDTH/2 - g2.getFontMetrics().stringWidth(hint)/2, py + ph + 18);
+        } else {
+            g2.setFont(new Font("Arial", Font.BOLD, 14));
+            g2.setColor(new Color(255, 100, 100));
+            String q = "Quit this run?";
+            g2.drawString(q, WIDTH/2 - g2.getFontMetrics().stringWidth(q)/2, 270);
+            g2.setFont(new Font("Arial", Font.PLAIN, 11));
+            g2.setColor(new Color(160, 160, 200));
+            String sub = "Progress will be lost.";
+            g2.drawString(sub, WIDTH/2 - g2.getFontMetrics().stringWidth(sub)/2, 292);
+            drawBtn(g2, btnPauseConfirmYes, "YES, QUIT",    true);
+            drawBtn(g2, btnPauseConfirmNo,  "KEEP PLAYING", true);
+        }
+    }
     private void drawGameOver(Graphics2D g2) {
         g2.setColor(new Color(0, 0, 0, 175));
         g2.fillRect(0, 0, WIDTH, HEIGHT);
@@ -3271,7 +3371,66 @@ public class BulletHellGame extends JPanel
         g2.setFont(new Font("Arial", Font.BOLD, 17));
         g2.setColor(active ? Color.WHITE : new Color(100, 100, 160));
         FontMetrics fm = g2.getFontMetrics();
-        g2.drawString(label, r.x + r.width / 2 - fm.stringWidth(label) / 2, r.y + r.height / 2 + 6);
+        int tx = r.x + r.width / 2 - fm.stringWidth(label) / 2;
+        int ty = r.y + r.height / 2 + 6;
+        g2.drawString(label, tx, ty);
+        // icon drawn 18px left of text, vertically centered
+        int ix = tx - 20;
+        int iy = r.y + r.height / 2;
+        if (label.equals("RESUME") || label.equals("START")) {
+            g2.setColor(new Color(0, 210, 255, 200));
+            g2.fillPolygon(new int[]{ix, ix, ix+11}, new int[]{iy-9, iy+9, iy}, 3);
+        } else if (label.equals("SETTINGS")) {
+            g2.setColor(new Color(0, 210, 255, 200));
+            g2.setStroke(new BasicStroke(1.8f));
+            g2.drawOval(ix-5, iy-5, 10, 10);
+            for (int i = 0; i < 8; i++) {
+                double a = Math.toRadians(i * 45);
+                g2.drawLine((int)(ix+Math.cos(a)*6),(int)(iy+Math.sin(a)*6),
+                            (int)(ix+Math.cos(a)*10),(int)(iy+Math.sin(a)*10));
+            }
+            g2.setStroke(new BasicStroke(1));
+        } else if (label.equals("QUIT")) {
+            g2.setColor(new Color(255, 80, 80, 200));
+            g2.setStroke(new BasicStroke(2.2f));
+            g2.drawLine(ix-6, iy-6, ix+6, iy+6);
+            g2.drawLine(ix+6, iy-6, ix-6, iy+6);
+            g2.setStroke(new BasicStroke(1));
+        } else if (label.equals("MOUSE CLICK")) {
+            g2.setColor(new Color(0, 210, 255, 200));
+            g2.setStroke(new BasicStroke(1.5f));
+            // mouse body
+            g2.drawRoundRect(ix-6, iy-9, 12, 16, 5, 5);
+            // middle line
+            g2.drawLine(ix, iy-9, ix, iy-3);
+            // click dot
+            g2.fillOval(ix-2, iy-6, 4, 4);
+            g2.setStroke(new BasicStroke(1));
+        } else if (label.equals("SPACEBAR")) {
+            g2.setColor(new Color(0, 210, 255, 200));
+            g2.setStroke(new BasicStroke(1.8f));
+            // key outline
+            g2.drawRoundRect(ix-9, iy-6, 18, 12, 4, 4);
+            // spacebar bottom line
+            g2.drawLine(ix-5, iy+2, ix+5, iy+2);
+            g2.setStroke(new BasicStroke(1));
+        } else if (label.startsWith("MUSIC")) {
+            boolean on = label.contains("ON");
+            g2.setColor(on ? new Color(0, 210, 255, 200) : new Color(150, 150, 180, 150));
+            g2.setStroke(new BasicStroke(1.8f));
+            // note stem
+            g2.drawLine(ix+4, iy-8, ix+4, iy+2);
+            // note head
+            g2.fillOval(ix-2, iy, 7, 6);
+            // note flag
+            g2.drawLine(ix+4, iy-8, ix+10, iy-5);
+            if (!on) {
+                // strike-through for OFF
+                g2.setColor(new Color(255, 80, 80, 180));
+                g2.drawLine(ix-8, iy+6, ix+10, iy-10);
+            }
+            g2.setStroke(new BasicStroke(1));
+        }
     }
 
     private void centeredTitle(Graphics2D g2, String text, int y) {
@@ -3288,7 +3447,10 @@ public class BulletHellGame extends JPanel
     private void sectionLabel(Graphics2D g2, String label, int y) {
         g2.setFont(new Font("Arial", Font.BOLD, 13));
         g2.setColor(new Color(100, 180, 255));
-        g2.drawString("▸  " + label, WIDTH / 2 - 120, y);
+        g2.drawString(label, WIDTH / 2 - 120, y);
+        // small accent line under label
+        g2.setColor(new Color(0, 180, 255, 60));
+        g2.fillRect(WIDTH / 2 - 120, y + 3, g2.getFontMetrics().stringWidth(label), 1);
     }
 
     private void drawMiniShip(Graphics2D g2, int x, int y) {
@@ -3365,11 +3527,25 @@ public class BulletHellGame extends JPanel
         if (gameState == STATE_GAME_OVER) {
             if (e.getKeyCode() == KeyEvent.VK_R)
                 startGame();
-            if (e.getKeyCode() == KeyEvent.VK_M)
+            if (e.getKeyCode() == KeyEvent.VK_M) {
+                enemyBullets.clear();
+                playerBullets.clear();
+                powerUps.clear();
                 gameState = STATE_MENU;
+            }
         }
-        if (gameState == STATE_PLAYING && e.getKeyCode() == KeyEvent.VK_ESCAPE)
+        if (gameState == STATE_PLAYING && e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+            gameState = STATE_PAUSE;
+        } else if (gameState == STATE_PAUSE && e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+            pauseConfirmQuit = false;
+            gameState = STATE_PLAYING;
+        }
+        if (gameState == STATE_PAUSE && e.getKeyCode() == KeyEvent.VK_M) {
+            enemyBullets.clear();
+            playerBullets.clear();
+            powerUps.clear();
             gameState = STATE_MENU;
+        }
         if (gameState == STATE_CLASS_SEL && e.getKeyCode() == KeyEvent.VK_ENTER)
             startGame();
         if (gameState == STATE_SHOP && e.getKeyCode() == KeyEvent.VK_ENTER)
@@ -3409,8 +3585,33 @@ public class BulletHellGame extends JPanel
                     else
                         sequencer.stop();
                 }
-            } else if (btnSettBack.contains(p))
-                gameState = STATE_MENU;
+            } else if (btnSettBack.contains(p)) {
+                if (pauseInSettings) { pauseInSettings = false; }
+                else gameState = STATE_MENU;
+            }
+        } else if (gameState == STATE_PAUSE) {
+            if (!pauseConfirmQuit) {
+                if (btnPauseResume.contains(p)) {
+                    pauseConfirmQuit = false;
+                    gameState = STATE_PLAYING;
+                } else if (btnPauseSettings.contains(p)) {
+                    pauseInSettings = true;
+                    gameState = STATE_SETTINGS;
+                } else if (btnPauseQuit.contains(p)) {
+                    pauseConfirmQuit = true;
+                }
+            } else {
+                if (btnPauseConfirmYes.contains(p)) {
+                    enemyBullets.clear();
+                    playerBullets.clear();
+                    powerUps.clear();
+                    pauseInSettings = false;
+                    pauseConfirmQuit = false;
+                    gameState = STATE_MENU;
+                } else if (btnPauseConfirmNo.contains(p)) {
+                    pauseConfirmQuit = false;
+                }
+            }
         } else if (gameState == STATE_DIFF_SEL) {
             if (btnDiffEasy.contains(p)) {
                 difficulty = 0;
