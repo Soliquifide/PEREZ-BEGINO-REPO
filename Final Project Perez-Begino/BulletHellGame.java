@@ -2909,7 +2909,7 @@ g2.setStroke(new BasicStroke(sel ? 2.2f : 1.4f));
     };
     // Stats: ATK, SPD, MOB (3 stats only — DEF removed)
     private static final int[][] CLS_STATS = {
-            { 5, 3, 3 }, { 2, 1, 2 }, { 3, 2, 5 }, { 4, 2, 3 }
+            { 4, 5, 2 }, { 5, 1, 2 }, { 2, 3, 5 }, { 3, 2, 3 }
     };
 
     private void drawClassSelect(Graphics2D g2) {
@@ -3004,7 +3004,7 @@ g2.setStroke(new BasicStroke(sel ? 2.2f : 1.4f));
         }
 
         // Stat pips — 3 stats only (ATK, SPD, MOB)
-        String[] sl2 = { "ATK", "SPD", "MOB" };
+        String[] sl2 = { "ATK", "FR", "MOB" };
         int[] sv = CLS_STATS[id];
         int sbY = r.y + r.height - 38;
         for (int i2 = 0; i2 < 3; i2++) {
