@@ -44,7 +44,7 @@ public class BulletHellGame extends JPanel
     static final int CLASS_PHANTOM = 2;
     static final int CLASS_SENTINEL = 3;
     static final int CLASS_VIPER = 4;
-    static final int CLASS_COUNT = 5;
+    static final int CLASS_COUNT = 4;
 
     static final int NOVA_CHARGE_FRAMES = 180;
     static final int NOVA_COOLDOWN_FRAMES = 60;
@@ -290,25 +290,22 @@ public class BulletHellGame extends JPanel
     private final Rectangle btnPauseConfirmYes = new Rectangle(WIDTH/2 - 110, 315, 220, 50);
     private final Rectangle btnPauseConfirmNo  = new Rectangle(WIDTH/2 - 110, 380, 220, 50);
 
-    private final Rectangle btnDiffEasy = new Rectangle(WIDTH / 2 - 120, 300, 240, 80);
-    private final Rectangle btnDiffNormal = new Rectangle(WIDTH / 2 - 120, 400, 240, 80);
-    private final Rectangle btnDiffHard = new Rectangle(WIDTH / 2 - 120, 500, 240, 80);
-    private final Rectangle btnDiffBack = new Rectangle(WIDTH / 2 - 100, 610, 200, 46);
+    private final Rectangle btnDiffEasy   = new Rectangle(WIDTH / 2 - 130, 200, 260, 90);
+    private final Rectangle btnDiffNormal = new Rectangle(WIDTH / 2 - 130, 300, 260, 90);
+    private final Rectangle btnDiffHard   = new Rectangle(WIDTH / 2 - 130, 400, 260, 90);
+    private final Rectangle btnDiffBack   = new Rectangle(WIDTH / 2 - 100, 510, 200, 46);
 
     private final Rectangle btnClassBack = new Rectangle(WIDTH / 2 - 100, 600, 200, 46);
     // 5 class cards in a single row (centered)
     // Row 1: 3 cards, Row 2: 2 cards centered — fills the screen properly
-    private static final int CW = 176, CH = 240, CGAP = 10;
-    private static final int CW2 = 240, CH2 = 220, CGAP2 = 16;
-    private static final int CROW1Y = 108, CROW2Y = 366;
-    private static final int ROW1X = (WIDTH - CW*3 - CGAP*2) / 2;
-    private static final int ROW2X = (WIDTH - CW2*2 - CGAP2) / 2;
+    private static final int CW = 130, CH = 240, CGAP = 14;
+   private static final int CROW1Y = 160;
+ private static final int ROW1X = (WIDTH - CW*4 - CGAP*3) / 2;
     private final Rectangle[] btnClass = {
-            new Rectangle(ROW1X + 0*(CW+CGAP),    CROW1Y, CW,  CH),
-            new Rectangle(ROW1X + 1*(CW+CGAP),    CROW1Y, CW,  CH),
-            new Rectangle(ROW1X + 2*(CW+CGAP),    CROW1Y, CW,  CH),
-            new Rectangle(ROW2X + 0*(CW2+CGAP2),  CROW2Y, CW2, CH2),
-            new Rectangle(ROW2X + 1*(CW2+CGAP2),  CROW2Y, CW2, CH2),
+        new Rectangle(ROW1X + 0*(CW+CGAP), CROW1Y, CW, CH),
+        new Rectangle(ROW1X + 1*(CW+CGAP), CROW1Y, CW, CH),
+        new Rectangle(ROW1X + 2*(CW+CGAP), CROW1Y, CW, CH),
+        new Rectangle(ROW1X + 3*(CW+CGAP), CROW1Y, CW, CH),
     };
 
     // =================================================================
@@ -928,7 +925,7 @@ public class BulletHellGame extends JPanel
             sceneIndex = (wave - 1) % SCENE_COUNT;
         }
         setScene(sceneIndex);
-        boss = new Boss(WIDTH / 2 - 40, 60, wave);
+        boss = new Boss(WIDTH / 2 - 40, -80, wave);
         bossTransition = false;
         gameState = STATE_PLAYING;
     }
@@ -2856,7 +2853,7 @@ public class BulletHellGame extends JPanel
             }
         }
         // Body — nearly black when unselected, dark navy when selected
-        g2.setColor(sel ? new Color(10, 14, 40) : new Color(5, 5, 12));
+        g2.setColor(sel ? new Color(10, 14, 40) : new Color(30, 30, 55, 255));
         g2.fillRoundRect(r.x, r.y, r.width, r.height, 12, 12);
         // Top shimmer only when selected
         if (sel) {
@@ -2864,8 +2861,8 @@ public class BulletHellGame extends JPanel
             g2.fillRoundRect(r.x, r.y, r.width, r.height/2, 12, 12);
         }
         // Border — bright accent when selected, barely visible when not
-        g2.setColor(sel ? accent : new Color(accent.getRed()/5, accent.getGreen()/5, accent.getBlue()/5, 80));
-        g2.setStroke(new BasicStroke(sel ? 2.2f : 0.8f));
+        g2.setColor(sel ? accent : new Color(accent.getRed()/2, accent.getGreen()/2, accent.getBlue()/2, 160));
+g2.setStroke(new BasicStroke(sel ? 2.2f : 1.4f));
         g2.drawRoundRect(r.x, r.y, r.width, r.height, 12, 12);
         g2.setStroke(new BasicStroke(1));
         // Left accent bar only when selected
@@ -2875,12 +2872,12 @@ public class BulletHellGame extends JPanel
         }
         // Title — white when selected, dim when not
         g2.setFont(new Font("Arial", Font.BOLD, 20));
-        g2.setColor(sel ? Color.WHITE : new Color(60, 60, 90));
+        g2.setColor(sel ? Color.WHITE : new Color(160, 160, 180));
         FontMetrics fm = g2.getFontMetrics();
         g2.drawString(title, r.x + r.width / 2 - fm.stringWidth(title) / 2, r.y + 28);
         // Bullet points
         g2.setFont(new Font("Arial", Font.PLAIN, 13));
-        g2.setColor(sel ? new Color(200, 220, 255) : new Color(40, 40, 65));
+        g2.setColor(sel ? new Color(200, 220, 255) : new Color(170, 170, 200));
         g2.drawString("- " + l1, r.x + 20, r.y + 50);
         g2.drawString("- " + l2, r.x + 20, r.y + 68);
         // SELECTED badge on right side
@@ -2899,21 +2896,20 @@ public class BulletHellGame extends JPanel
     }
 
     // ── Class select (5 cards, single row, no DEF stat) ──────────────
-    private static final String[] CLS_NAMES = { "MACHINE\nGUNNER", "NOVA", "PHANTOM", "SENTINEL", "VIPER" };
+    private static final String[] CLS_NAMES = { "MACHINE\nGUNNER", "NOVA", "PHANTOM", "VIPER" };
     private static final String[] CLS_DESC = {
             "Rapid fire.\nOverheats.",
             "Charge laser.\nOne big hit.",
             "Dash+decoy.\nSHIFT=blink.",
-            "Orb shield.\nDeflects bullets.",
             "Every 5 hits\n applies stacking poison.\n(3-9% boss HP,\n ticks every 2s)"
     };
     private static final Color[] CLS_COL = {
             new Color(0, 220, 255), new Color(130, 80, 255), new Color(180, 0, 255),
-            new Color(80, 255, 200), new Color(0, 255, 100)
+             new Color(0, 255, 100)
     };
     // Stats: ATK, SPD, MOB (3 stats only — DEF removed)
     private static final int[][] CLS_STATS = {
-            { 5, 3, 3 }, { 2, 1, 2 }, { 3, 2, 5 }, { 2, 3, 2 }, { 4, 2, 3 }
+            { 5, 3, 3 }, { 2, 1, 2 }, { 3, 2, 5 }, { 4, 2, 3 }
     };
 
     private void drawClassSelect(Graphics2D g2) {
@@ -3792,7 +3788,7 @@ g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
         soundCooldown = 0;
         player = new Player(WIDTH / 2 - 15, HEIGHT - 100);
         player.lives = new int[] { 5, 3, 2 }[difficulty];
-        boss = new Boss(WIDTH / 2 - 40, 60, wave);
+        boss = new Boss(WIDTH / 2 - 40, -80, wave);
         playerBullets.clear();
         enemyBullets.clear();
         powerUps.clear();
@@ -3873,7 +3869,28 @@ g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
     @Override
     public void mouseClicked(MouseEvent e) {
         Point p = e.getPoint();
-        if (gameState == STATE_MENU) {
+        if (gameState == STATE_PLAYING && fireMode == FIRE_MOUSE && e.getButton() == MouseEvent.BUTTON1) {
+            mouseFireHeld = true;
+            Timer stopFire = new Timer(16, ev -> mouseFireHeld = false);
+            stopFire.setRepeats(false);
+            stopFire.start();
+            return;
+        }
+        if (gameState == STATE_GAME_OVER) {
+    int px = WIDTH/2-160, pw = 320;
+    // calculate hy same as drawGameOver — approximate button Y positions
+    if (p.x >= px+20 && p.x <= px+pw-20) {
+        if (p.y >= 440 && p.y <= 480)
+            startGame();
+        else if (p.y >= 490 && p.y <= 530) {
+            enemyBullets.clear();
+            playerBullets.clear();
+            powerUps.clear();
+            gameState = STATE_MENU;
+            return;
+        }
+    }
+} else if (gameState == STATE_MENU) {
             if (btnStart.contains(p))
                 gameState = STATE_DIFF_SEL;
             else if (btnSettings.contains(p))
@@ -3966,8 +3983,8 @@ gameState = STATE_GAME_OVER;
     @Override
     public void mousePressed(MouseEvent e) {
         if (e.getButton() == MouseEvent.BUTTON1) {
-            if (gameState == STATE_PLAYING)
-                mouseFireHeld = true;
+            if (gameState == STATE_PLAYING && fireMode != FIRE_MOUSE)
+                mouseFireHeld = false;
             if (gameState == STATE_SETTINGS && sliderTrack.contains(e.getPoint()))
                 draggingSlider = true;
         }
