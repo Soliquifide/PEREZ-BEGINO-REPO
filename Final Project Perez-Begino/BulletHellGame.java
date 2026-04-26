@@ -20,6 +20,7 @@ public class BulletHellGame extends JPanel
     static final int STATE_CLASS_SEL = 5;
     static final int STATE_PLAYING = 3;
     static final int STATE_GAME_OVER = 4;
+    static final int STATE_WAVE10_CHOICE = 9;
     static final int STATE_SHOP = 7;
     static final int STATE_PAUSE = 8;
 
@@ -175,6 +176,10 @@ public class BulletHellGame extends JPanel
     private int gameState = STATE_MENU;
     private int score = 0;
     private int wave = 1;
+    private final int[] highScores = new int[3];
+    private java.util.prefs.Preferences prefs;
+    private final Rectangle btnContinueEndless = new Rectangle(WIDTH/2 - 120, 370, 240, 54);
+    private final Rectangle btnEndRun          = new Rectangle(WIDTH/2 - 120, 440, 240, 54);
     private int frameCount = 0;
     private boolean bossTransition = false;
 
@@ -321,6 +326,10 @@ public class BulletHellGame extends JPanel
             starSz[i] = sr.nextInt(3) + 1;
         }
         initScenery();
+        prefs = java.util.prefs.Preferences.userNodeForPackage(BulletHellGame.class);
+        highScores[0] = prefs.getInt("hs_easy",   0);
+        highScores[1] = prefs.getInt("hs_normal", 0);
+        highScores[2] = prefs.getInt("hs_hard",   0);
         initMusic();
         initSound();
         gameTimer = new Timer(16, this);
@@ -677,7 +686,8 @@ public class BulletHellGame extends JPanel
                 if (player.lives <= 0) {
                     player.alive = false;
                     spawnExplosion(player.x + player.size / 2, player.y + player.size / 2, Color.CYAN, 24);
-                    Timer goTimer = new Timer(600, ev2 -> gameState = STATE_GAME_OVER);
+                    if (score > highScores[difficulty]) { highScores[difficulty] = score; prefs.putInt(new String[]{"hs_easy","hs_normal","hs_hard"}[difficulty], highScores[difficulty]); }
+            Timer goTimer = new Timer(600, ev2 -> gameState = STATE_GAME_OVER);
                     goTimer.setRepeats(false);
                     goTimer.start();
                 } else
@@ -699,6 +709,7 @@ public class BulletHellGame extends JPanel
                     if (player.lives <= 0) {
                         player.alive = false;
                         spawnExplosion(player.x + player.size / 2, player.y + player.size / 2, Color.CYAN, 24);
+                        if (score > highScores[difficulty]) { highScores[difficulty] = score; prefs.putInt(new String[]{"hs_easy","hs_normal","hs_hard"}[difficulty], highScores[difficulty]); }
                         Timer goTimer = new Timer(600, ev2 -> gameState = STATE_GAME_OVER);
                         goTimer.setRepeats(false);
                         goTimer.start();
@@ -813,7 +824,6 @@ public class BulletHellGame extends JPanel
 
     // ── FIX: bossDefeated now safe against double-call ────────────────
     private void bossDefeated() {
-        // boss.alive is already set to false by the caller before invoking this
         score += 500 + wave * 50;
         wave++;
         bossTransition = true;
@@ -824,9 +834,17 @@ public class BulletHellGame extends JPanel
         novaLaserActive = false;
         playerBullets.clear();
         enemyBullets.clear();
-        Timer shopDelay = new Timer(1500, ev -> openShop());
-        shopDelay.setRepeats(false);
-        shopDelay.start();
+        if (wave - 1 == 10) {
+            // just beat wave 10 — ask player to continue or end
+            if (score > highScores[difficulty]) { highScores[difficulty] = score; prefs.putInt(new String[]{"hs_easy","hs_normal","hs_hard"}[difficulty], highScores[difficulty]); }
+            Timer choiceDelay = new Timer(1500, ev -> gameState = STATE_WAVE10_CHOICE);
+            choiceDelay.setRepeats(false);
+            choiceDelay.start();
+        } else {
+            Timer shopDelay = new Timer(1500, ev -> openShop());
+            shopDelay.setRepeats(false);
+            shopDelay.start();
+        }
     }
 
     private void openShop() {
@@ -1523,6 +1541,10 @@ public class BulletHellGame extends JPanel
             case STATE_GAME_OVER:
                 drawGame(g2);
                 drawGameOver(g2);
+                break;
+            case STATE_WAVE10_CHOICE:
+                drawGame(g2);
+                drawWave10Choice(g2);
                 break;
         }
         g2.translate(-shakeX, -shakeY);
@@ -3141,7 +3163,13 @@ public class BulletHellGame extends JPanel
         g2.setFont(new Font("Courier New", Font.BOLD, 16));
         g2.setColor(Color.WHITE);
         g2.drawString("SCORE: " + score, 10, 24);
-        g2.drawString("WAVE: " + wave, WIDTH - 100, 24);
+        String[] diffLabels = {"EASY", "NORMAL", "HARD"};
+g2.setFont(new Font("Arial", Font.PLAIN, 10));
+g2.setColor(new Color(120, 120, 180));
+g2.drawString("BEST (" + diffLabels[difficulty] + ")", WIDTH - 100, 38);
+g2.setFont(new Font("Courier New", Font.BOLD, 13));
+g2.setColor(score >= highScores[difficulty] ? new Color(255, 220, 60) : new Color(160, 160, 210));
+g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
         if (wave % 5 == 0) {
             g2.setFont(new Font("Arial", Font.BOLD, 11));
             g2.setColor(new Color(255, 60, 60, (int) (180 + 70 * Math.abs(Math.sin(frameCount * 0.12)))));
@@ -3257,15 +3285,15 @@ public class BulletHellGame extends JPanel
             px = drawHudIcon(g2, px, py, "SH", new Color(80, 180, 255), (float) shieldTimer / 600f, false);
         // ── Shop permanent upgrades (pulsing ★ bar) ────────────────────
         if (shopSpeedBoost)
-            px = drawHudIcon(g2, px, py, "SPD★", SHOP_ACCENT[1], 1f, true);
+            px = drawHudIcon(g2, px, py, "SPD*", SHOP_ACCENT[1], 1f, true);
         if (shopRapidFire)
-            px = drawHudIcon(g2, px, py, "RF★", SHOP_ACCENT[2], 1f, true);
+            px = drawHudIcon(g2, px, py, "RF*", SHOP_ACCENT[2], 1f, true);
         if (shopBulletTime)
-            px = drawHudIcon(g2, px, py, "BT★", SHOP_ACCENT[3], 1f, true);
+            px = drawHudIcon(g2, px, py, "BT*", SHOP_ACCENT[3], 1f, true);
         if (shopScoreRush)
-            px = drawHudIcon(g2, px, py, "SR★", SHOP_ACCENT[4], 1f, true);
+            px = drawHudIcon(g2, px, py, "SR*", SHOP_ACCENT[4], 1f, true);
         if (shopPhaseShift)
-            px = drawHudIcon(g2, px, py, "PS★", SHOP_ACCENT[5], 1f, true);
+            px = drawHudIcon(g2, px, py, "PS*", SHOP_ACCENT[5], 1f, true);
     }
 
     private int drawHudIcon(Graphics2D g2, int px, int py,
@@ -3337,26 +3365,304 @@ public class BulletHellGame extends JPanel
             drawBtn(g2, btnPauseConfirmNo,  "KEEP PLAYING", true);
         }
     }
-    private void drawGameOver(Graphics2D g2) {
-        g2.setColor(new Color(0, 0, 0, 175));
-        g2.fillRect(0, 0, WIDTH, HEIGHT);
-        g2.setFont(new Font("Arial", Font.BOLD, 54));
-        String go = "GAME  OVER";
-        int gx = WIDTH / 2 - g2.getFontMetrics().stringWidth(go) / 2;
-        g2.setColor(new Color(255, 0, 0, 80));
-        g2.drawString(go, gx - 2, HEIGHT / 2 - 18);
-        g2.setColor(Color.RED);
-        g2.drawString(go, gx, HEIGHT / 2 - 20);
-        g2.setFont(new Font("Arial", Font.PLAIN, 22));
-        g2.setColor(Color.WHITE);
-        g2.drawString("Final Score: " + score, WIDTH / 2 - 82, HEIGHT / 2 + 30);
-        g2.drawString("Reached Wave: " + wave, WIDTH / 2 - 82, HEIGHT / 2 + 58);
-        g2.setFont(new Font("Arial", Font.BOLD, 16));
-        g2.setColor(new Color(200, 200, 255));
-        g2.drawString("[ R ]  Restart", WIDTH / 2 - 60, HEIGHT / 2 + 100);
-        g2.drawString("[ M ]  Main Menu", WIDTH / 2 - 67, HEIGHT / 2 + 124);
-    }
+    private void drawWave10Choice(Graphics2D g2) {
+        // Dark overlay
+        g2.setColor(new Color(0,0,0,200));
+        g2.fillRect(0,0,WIDTH,HEIGHT);
 
+        // ── Main panel ───────────────────────────────────────────────
+        int px=WIDTH/2-170, py=120, pw=340, ph=460;
+        // Panel shadow
+        g2.setColor(new Color(0,0,0,120));
+        g2.fillRoundRect(px+6, py+6, pw, ph, 20, 20);
+        // Panel body gradient
+        GradientPaint pg = new GradientPaint(px,py,new Color(8,10,32),px,py+ph,new Color(4,5,18));
+        g2.setPaint(pg); g2.fillRoundRect(px,py,pw,ph,20,20);
+
+        // Gold top accent strip
+        GradientPaint tg = new GradientPaint(px,py,new Color(255,200,60,0),px+pw/2,py,new Color(255,210,80,220));
+        g2.setPaint(tg); g2.fillRoundRect(px,py,pw,6,20,20); g2.fillRect(px,py+4,pw,2);
+
+        // Gold border
+        g2.setPaint(null);
+        g2.setColor(new Color(255,200,60,90));
+        g2.setStroke(new BasicStroke(1.6f));
+        g2.drawRoundRect(px,py,pw,ph,20,20);
+        g2.setStroke(new BasicStroke(1));
+
+        // ── Trophy icon ───────────────────────────────────────────────
+        int tcx=WIDTH/2, tcy=py+62;
+        // Glow behind trophy
+        g2.setColor(new Color(255,200,50,18));
+        g2.fillOval(tcx-38, tcy-38, 76, 76);
+
+        // Gold gradient for trophy
+        GradientPaint trG = new GradientPaint(tcx-24,tcy-28,new Color(255,240,120),tcx+24,tcy+30,new Color(200,130,20));
+        g2.setPaint(trG);
+
+        // Cup bowl — correct upper half (180 start, 180 sweep = top half)
+        g2.fillArc(tcx-24, tcy-24, 48, 38, 180, 180);
+        // Cup sides connecting bowl to stem
+        g2.fillRect(tcx-20, tcy+14, 8, 8);
+        g2.fillRect(tcx+12, tcy+14, 8, 8);
+        // Stem
+        g2.fillRect(tcx-5, tcy+22, 10, 12);
+        // Base plate
+        g2.fillRoundRect(tcx-18, tcy+34, 36, 7, 4, 4);
+
+        // Handles — must reset paint before drawing
+        g2.setPaint(null);
+        g2.setColor(new Color(200,140,20,230));
+        g2.setStroke(new BasicStroke(4f));
+        g2.drawArc(tcx-34, tcy-8, 14, 18, 90, -180);   // left handle
+        g2.drawArc(tcx+20, tcy-8, 14, 18, 90,  180);   // right handle
+        g2.setStroke(new BasicStroke(1));
+
+        // Star on cup face
+        g2.setPaint(null);
+        g2.setColor(new Color(255,255,180,200));
+        g2.setFont(new Font("Arial", Font.BOLD, 14));
+        g2.drawString("★", tcx-5, tcy+10);
+
+        // ── Title ─────────────────────────────────────────────────────
+        g2.setFont(new Font("Arial",Font.BOLD,28));
+        GradientPaint titleG = new GradientPaint(0,py+88,new Color(255,230,100),0,py+118,new Color(255,150,30));
+        g2.setPaint(titleG);
+        String t = "WAVE 10 CLEARED!";
+        g2.drawString(t, WIDTH/2-g2.getFontMetrics().stringWidth(t)/2, py+110);
+
+        // ── Divider ───────────────────────────────────────────────────
+        g2.setPaint(null);
+        g2.setColor(new Color(255,200,60,40));
+        g2.fillRect(px+24, py+118, pw-48, 1);
+
+        // ── Score block ───────────────────────────────────────────────
+        boolean newRecord = score >= highScores[difficulty];
+        // Score row
+        g2.setFont(new Font("Arial",Font.PLAIN,13));
+        g2.setColor(new Color(140,160,210));
+        g2.drawString("SCORE", px+36, py+148);
+        g2.setFont(new Font("Courier New",Font.BOLD,22));
+        g2.setColor(Color.WHITE);
+        g2.drawString(String.valueOf(score), px+pw-36-g2.getFontMetrics().stringWidth(String.valueOf(score)), py+148);
+
+        // High score row
+        g2.setFont(new Font("Arial",Font.PLAIN,13));
+        String[] dnames={"EASY","NORMAL","HARD"};
+        g2.setColor(new Color(140,160,210));
+        g2.drawString("BEST  (" + dnames[difficulty] + ")", px+36, py+174);
+        g2.setFont(new Font("Courier New",Font.BOLD,22));
+        g2.setColor(newRecord ? new Color(255,220,60) : new Color(160,160,200));
+        g2.drawString(String.valueOf(highScores[difficulty]), px+pw-36-g2.getFontMetrics().stringWidth(String.valueOf(highScores[difficulty])), py+174);
+
+        // NEW RECORD badge — large centered banner
+        if (newRecord) {
+            float pulse = (float)(0.55+0.45*Math.sin(frameCount*0.11));
+            int bdW=200, bdH=30, bdX=WIDTH/2-bdW/2, bdY=py+180;
+            // Outer glow
+            g2.setColor(new Color(255,220,50,(int)(40*pulse)));
+            g2.fillRoundRect(bdX-6,bdY-6,bdW+12,bdH+12,14,14);
+            // Badge fill
+            GradientPaint bdG=new GradientPaint(bdX,bdY,new Color(255,210,40),bdX,bdY+bdH,new Color(220,140,0));
+            g2.setPaint(bdG);
+            g2.fillRoundRect(bdX,bdY,bdW,bdH,10,10);
+            // Shine
+            g2.setColor(new Color(255,255,255,(int)(70*pulse)));
+            g2.fillRoundRect(bdX+2,bdY+2,bdW-4,bdH/2-2,8,8);
+            // Border
+            g2.setPaint(null);
+            g2.setColor(new Color(255,255,180,(int)(200*pulse)));
+            g2.setStroke(new BasicStroke(1.5f));
+            g2.drawRoundRect(bdX,bdY,bdW,bdH,10,10);
+            g2.setStroke(new BasicStroke(1));
+            // Text
+            g2.setFont(new Font("Arial",Font.BOLD,15));
+            g2.setColor(new Color(30,10,0));
+            String rec="* NEW RECORD! *";
+            FontMetrics rfm=g2.getFontMetrics();
+            g2.drawString(rec, WIDTH/2-rfm.stringWidth(rec)/2, bdY+bdH/2+6);
+        }
+
+        // ── Divider ───────────────────────────────────────────────────
+        g2.setColor(new Color(255,200,60,30));
+        g2.fillRect(px+24, py+206, pw-48, 1);
+
+        // ── Endless mode description ──────────────────────────────────
+        g2.setFont(new Font("Arial",Font.BOLD,14));
+        g2.setColor(new Color(180,230,255));
+        String q = "Continue in Endless Mode?";
+        g2.drawString(q, WIDTH/2-g2.getFontMetrics().stringWidth(q)/2, py+236);
+
+        g2.setFont(new Font("Arial",Font.PLAIN,11));
+        g2.setColor(new Color(100,120,170));
+        String[] lines = {
+            "Bosses grow stronger with every wave.",
+            "No checkpoints. Score keeps climbing.",
+            "Your record will be saved when you stop."
+        };
+        int ly = py+256;
+        for (String ln : lines) {
+            g2.drawString(ln, WIDTH/2-g2.getFontMetrics().stringWidth(ln)/2, ly);
+            ly += 16;
+        }
+
+        // ── Buttons ───────────────────────────────────────────────────
+        // KEEP GOING — green accent
+        int b1x=px+20, b1y=py+320, b1w=pw-40, b1h=52;
+        g2.setColor(new Color(0,180,80,30));
+        g2.fillRoundRect(b1x-3,b1y-3,b1w+6,b1h+6,14,14);
+        GradientPaint b1g=new GradientPaint(b1x,b1y,new Color(0,140,60),b1x,b1y+b1h,new Color(0,90,40));
+        g2.setPaint(b1g); g2.fillRoundRect(b1x,b1y,b1w,b1h,12,12);
+        g2.setPaint(null);
+        g2.setColor(new Color(0,255,120,180));
+        g2.setStroke(new BasicStroke(1.6f));
+        g2.drawRoundRect(b1x,b1y,b1w,b1h,12,12);
+        g2.setStroke(new BasicStroke(1));
+        // Shine
+        g2.setColor(new Color(255,255,255,25));
+        g2.fillRoundRect(b1x+2,b1y+2,b1w-4,b1h/2-2,10,10);
+        g2.setFont(new Font("Arial",Font.BOLD,16));
+        g2.setColor(Color.WHITE);
+        String kg=">> KEEP GOING -- ENDLESS";
+        g2.drawString(kg, WIDTH/2-g2.getFontMetrics().stringWidth(kg)/2, b1y+b1h/2+6);
+        btnContinueEndless.setBounds(b1x,b1y,b1w,b1h);
+
+        // END RUN — subtle red/dark
+        int b2x=px+20, b2y=b1y+b1h+12, b2w=pw-40, b2h=44;
+        g2.setColor(new Color(10,10,30));
+        g2.fillRoundRect(b2x,b2y,b2w,b2h,10,10);
+        g2.setColor(new Color(180,60,60,120));
+        g2.setStroke(new BasicStroke(1.2f));
+        g2.drawRoundRect(b2x,b2y,b2w,b2h,10,10);
+        g2.setStroke(new BasicStroke(1));
+        g2.setFont(new Font("Arial",Font.BOLD,14));
+        g2.setColor(new Color(200,120,120));
+        String er="X  END RUN  &  SAVE SCORE";
+        g2.drawString(er, WIDTH/2-g2.getFontMetrics().stringWidth(er)/2, b2y+b2h/2+5);
+        btnEndRun.setBounds(b2x,b2y,b2w,b2h);
+    }
+    private void drawGameOver(Graphics2D g2) {
+        g2.setColor(new Color(0,0,0,190));
+        g2.fillRect(0,0,WIDTH,HEIGHT);
+
+        // ── Panel ────────────────────────────────────────────────────
+        int px=WIDTH/2-160, py=130, pw=320, ph=430;
+        g2.setColor(new Color(0,0,0,100));
+        g2.fillRoundRect(px+5,py+5,pw,ph,18,18);
+        GradientPaint pg=new GradientPaint(px,py,new Color(22,4,4),px,py+ph,new Color(8,2,2));
+        g2.setPaint(pg); g2.fillRoundRect(px,py,pw,ph,18,18);
+        // Red top strip
+        g2.setPaint(new GradientPaint(px,py,new Color(200,0,0,0),px+pw/2,py,new Color(220,30,30,200)));
+        g2.fillRoundRect(px,py,pw,6,18,18); g2.fillRect(px,py+4,pw,2);
+        g2.setPaint(null);
+        g2.setColor(new Color(200,40,40,80));
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRoundRect(px,py,pw,ph,18,18);
+        g2.setStroke(new BasicStroke(1));
+
+        // ── GAME OVER title ───────────────────────────────────────────
+        g2.setFont(new Font("Arial",Font.BOLD,46));
+        // Red glow behind
+        g2.setColor(new Color(255,0,0,30));
+        String go2="GAME OVER";
+        int gx=WIDTH/2-g2.getFontMetrics().stringWidth(go2)/2;
+        for(int gl=6;gl>=1;gl--){g2.setColor(new Color(220,0,0,8*gl));g2.drawString(go2,gx,py+68);}
+        g2.setColor(new Color(230,40,40)); g2.drawString(go2,gx,py+68);
+        // White shimmer on top half of letters
+        g2.setColor(new Color(255,180,180,40)); g2.drawString(go2,gx,py+64);
+
+        // ── Divider ───────────────────────────────────────────────────
+        g2.setColor(new Color(200,40,40,40));
+        g2.fillRect(px+24,py+80,pw-48,1);
+
+        // ── Stats rows ────────────────────────────────────────────────
+        String[] labels={"FINAL SCORE","BEST SCORE","DIFFICULTY","WAVE REACHED"};
+        String[] dnames={"Easy","Normal","Hard"};
+        boolean newRec = score > 0 && score >= highScores[difficulty];
+        String[] values={
+            String.valueOf(score),
+            String.valueOf(highScores[difficulty]),
+            dnames[difficulty],
+            String.valueOf(wave-1)
+        };
+        Color[] vcols={
+            Color.WHITE,
+            newRec ? new Color(255,220,60) : new Color(160,160,200),
+            new Color[]{new Color(60,220,80),new Color(0,180,255),new Color(255,80,60)}[difficulty],
+            new Color(180,200,255)
+        };
+        int rowY = py+112;
+        for(int i=0;i<labels.length;i++){
+            // Label
+            g2.setFont(new Font("Arial",Font.PLAIN,11));
+            g2.setColor(new Color(120,130,180));
+            g2.drawString(labels[i], px+28, rowY);
+            // Value right-aligned
+            g2.setFont(new Font("Courier New",Font.BOLD,18));
+            g2.setColor(vcols[i]);
+            FontMetrics vfm=g2.getFontMetrics();
+            g2.drawString(values[i], px+pw-28-vfm.stringWidth(values[i]), rowY);
+            // Row separator
+            g2.setColor(new Color(255,255,255,10));
+            g2.fillRect(px+20,rowY+6,pw-40,1);
+            rowY += 46;
+            // NEW RECORD badge under best score row — big and centered
+            if(i==1 && newRec){
+                float pulse=(float)(0.55+0.45*Math.sin(frameCount*0.11));
+                int bdW=190, bdH=28, bdX=WIDTH/2-bdW/2, bdY=rowY-40;
+                // Glow
+                g2.setColor(new Color(255,215,0,(int)(35*pulse)));
+                g2.fillRoundRect(bdX-5,bdY-5,bdW+10,bdH+10,12,12);
+                // Fill
+                GradientPaint bdG2=new GradientPaint(bdX,bdY,new Color(255,210,40),bdX,bdY+bdH,new Color(210,130,0));
+                g2.setPaint(bdG2);
+                g2.fillRoundRect(bdX,bdY,bdW,bdH,8,8);
+                // Shine
+                g2.setColor(new Color(255,255,255,(int)(65*pulse)));
+                g2.fillRoundRect(bdX+2,bdY+2,bdW-4,bdH/2-2,6,6);
+                // Border
+                g2.setPaint(null);
+                g2.setColor(new Color(255,255,180,(int)(190*pulse)));
+                g2.setStroke(new BasicStroke(1.4f));
+                g2.drawRoundRect(bdX,bdY,bdW,bdH,8,8);
+                g2.setStroke(new BasicStroke(1));
+                // Text
+                g2.setFont(new Font("Arial",Font.BOLD,14));
+                g2.setColor(new Color(30,10,0));
+                String rec2="★  NEW RECORD!  ★";
+                FontMetrics rfm2=g2.getFontMetrics();
+                g2.drawString(rec2, WIDTH/2-rfm2.stringWidth(rec2)/2, bdY+bdH/2+5);
+            }
+        }
+
+        // ── Divider ───────────────────────────────────────────────────
+        g2.setColor(new Color(200,40,40,30));
+        g2.fillRect(px+24,rowY-10,pw-48,1);
+
+        // ── Action hints ──────────────────────────────────────────────
+        int hy = rowY+14;
+        // R to restart
+        g2.setColor(new Color(15,15,40));
+        g2.fillRoundRect(px+20, hy, pw-40, 40, 8, 8);
+        g2.setColor(new Color(0,180,255,80));
+        g2.setStroke(new BasicStroke(1.2f));
+        g2.drawRoundRect(px+20,hy,pw-40,40,8,8);
+        g2.setStroke(new BasicStroke(1));
+        g2.setFont(new Font("Arial",Font.BOLD,14));
+        g2.setColor(Color.WHITE);
+        g2.drawString("[ R ]  Play Again", WIDTH/2-g2.getFontMetrics().stringWidth("[ R ]  Play Again")/2, hy+26);
+
+        hy += 50;
+        g2.setColor(new Color(10,10,28));
+        g2.fillRoundRect(px+20,hy,pw-40,40,8,8);
+        g2.setColor(new Color(100,100,160,60));
+        g2.setStroke(new BasicStroke(1.2f));
+        g2.drawRoundRect(px+20,hy,pw-40,40,8,8);
+        g2.setStroke(new BasicStroke(1));
+        g2.setFont(new Font("Arial",Font.BOLD,14));
+        g2.setColor(new Color(180,180,220));
+        g2.drawString("[ M ]  Main Menu", WIDTH/2-g2.getFontMetrics().stringWidth("[ M ]  Main Menu")/2, hy+26);
+    }
     private void drawBtn(Graphics2D g2, Rectangle r, String label, boolean active) {
         if (active) {
             g2.setColor(new Color(0, 150, 255, 25));
@@ -3524,6 +3830,8 @@ public class BulletHellGame extends JPanel
     public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() < 256)
             keys[e.getKeyCode()] = true;
+       
+
         if (gameState == STATE_GAME_OVER) {
             if (e.getKeyCode() == KeyEvent.VK_R)
                 startGame();
@@ -3607,7 +3915,8 @@ public class BulletHellGame extends JPanel
                     powerUps.clear();
                     pauseInSettings = false;
                     pauseConfirmQuit = false;
-                    gameState = STATE_MENU;
+                    if (score > highScores[difficulty]) { highScores[difficulty] = score; prefs.putInt(new String[]{"hs_easy","hs_normal","hs_hard"}[difficulty], highScores[difficulty]); }
+gameState = STATE_GAME_OVER;
                 } else if (btnPauseConfirmNo.contains(p)) {
                     pauseConfirmQuit = false;
                 }
@@ -3644,6 +3953,13 @@ public class BulletHellGame extends JPanel
                 }
             if (btnShopContinue.contains(p))
                 leaveShop();
+        } else if (gameState == STATE_WAVE10_CHOICE) {
+            if (btnContinueEndless.contains(p)) {
+                leaveShop();
+            } else if (btnEndRun.contains(p)) {
+                if (score > highScores[difficulty]) { highScores[difficulty] = score; prefs.putInt(new String[]{"hs_easy","hs_normal","hs_hard"}[difficulty], highScores[difficulty]); }
+                gameState = STATE_GAME_OVER;
+            }
         }
     }
 
