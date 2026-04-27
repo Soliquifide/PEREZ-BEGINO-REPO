@@ -43,7 +43,7 @@ public class BulletHellGame extends JPanel
     static final int CLASS_NOVA = 1;
     static final int CLASS_PHANTOM = 2;
     static final int CLASS_VIPER = 3;
-static final int CLASS_COUNT = 4;
+    static final int CLASS_COUNT = 4;
 
     static final int NOVA_CHARGE_FRAMES = 180;
     static final int NOVA_COOLDOWN_FRAMES = 60;
@@ -176,8 +176,8 @@ static final int CLASS_COUNT = 4;
     private int wave = 1;
     private final int[] highScores = new int[3];
     private java.util.prefs.Preferences prefs;
-    private final Rectangle btnContinueEndless = new Rectangle(WIDTH/2 - 120, 370, 240, 54);
-    private final Rectangle btnEndRun          = new Rectangle(WIDTH/2 - 120, 440, 240, 54);
+    private final Rectangle btnContinueEndless = new Rectangle(WIDTH / 2 - 120, 370, 240, 54);
+    private final Rectangle btnEndRun = new Rectangle(WIDTH / 2 - 120, 440, 240, 54);
     private int frameCount = 0;
     private boolean bossTransition = false;
 
@@ -222,7 +222,6 @@ static final int CLASS_COUNT = 4;
     private int phantomBurstCount = 0, phantomBurstCD = 0;
 
     // Sentinel
-    
 
     // Viper
     private final ArrayList<Snake> snakes = new ArrayList<>();
@@ -280,30 +279,30 @@ static final int CLASS_COUNT = 4;
     private final Rectangle sliderTrack = new Rectangle(WIDTH / 2 - 110, 440, 220, 18);
     private final Rectangle btnSettBack = new Rectangle(WIDTH / 2 - 100, 700, 200, 50);
     // Pause menu buttons
-    private final Rectangle btnPauseResume   = new Rectangle(WIDTH / 2 - 110, 250, 220, 50);
+    private final Rectangle btnPauseResume = new Rectangle(WIDTH / 2 - 110, 250, 220, 50);
     private final Rectangle btnPauseSettings = new Rectangle(WIDTH / 2 - 110, 315, 220, 50);
-    private final Rectangle btnPauseQuit     = new Rectangle(WIDTH / 2 - 110, 380, 220, 50);
+    private final Rectangle btnPauseQuit = new Rectangle(WIDTH / 2 - 110, 380, 220, 50);
     private boolean pauseInSettings = false;
     private boolean pauseConfirmQuit = false;
-    private final Rectangle btnPauseConfirmYes = new Rectangle(WIDTH/2 - 110, 315, 220, 50);
-    private final Rectangle btnPauseConfirmNo  = new Rectangle(WIDTH/2 - 110, 380, 220, 50);
+    private final Rectangle btnPauseConfirmYes = new Rectangle(WIDTH / 2 - 110, 315, 220, 50);
+    private final Rectangle btnPauseConfirmNo = new Rectangle(WIDTH / 2 - 110, 380, 220, 50);
 
-    private final Rectangle btnDiffEasy   = new Rectangle(WIDTH / 2 - 130, 200, 260, 90);
+    private final Rectangle btnDiffEasy = new Rectangle(WIDTH / 2 - 130, 200, 260, 90);
     private final Rectangle btnDiffNormal = new Rectangle(WIDTH / 2 - 130, 300, 260, 90);
-    private final Rectangle btnDiffHard   = new Rectangle(WIDTH / 2 - 130, 400, 260, 90);
-    private final Rectangle btnDiffBack   = new Rectangle(WIDTH / 2 - 100, 510, 200, 46);
+    private final Rectangle btnDiffHard = new Rectangle(WIDTH / 2 - 130, 400, 260, 90);
+    private final Rectangle btnDiffBack = new Rectangle(WIDTH / 2 - 100, 510, 200, 46);
 
     private final Rectangle btnClassBack = new Rectangle(WIDTH / 2 - 100, 600, 200, 46);
     // 5 class cards in a single row (centered)
     // Row 1: 3 cards, Row 2: 2 cards centered — fills the screen properly
     private static final int CW = 130, CH = 240, CGAP = 14;
-   private static final int CROW1Y = 160;
- private static final int ROW1X = (WIDTH - CW*4 - CGAP*3) / 2;
+    private static final int CROW1Y = 160;
+    private static final int ROW1X = (WIDTH - CW * 4 - CGAP * 3) / 2;
     private final Rectangle[] btnClass = {
-        new Rectangle(ROW1X + 0*(CW+CGAP), CROW1Y, CW, CH),
-        new Rectangle(ROW1X + 1*(CW+CGAP), CROW1Y, CW, CH),
-        new Rectangle(ROW1X + 2*(CW+CGAP), CROW1Y, CW, CH),
-        new Rectangle(ROW1X + 3*(CW+CGAP), CROW1Y, CW, CH),
+            new Rectangle(ROW1X + 0 * (CW + CGAP), CROW1Y, CW, CH),
+            new Rectangle(ROW1X + 1 * (CW + CGAP), CROW1Y, CW, CH),
+            new Rectangle(ROW1X + 2 * (CW + CGAP), CROW1Y, CW, CH),
+            new Rectangle(ROW1X + 3 * (CW + CGAP), CROW1Y, CW, CH),
     };
 
     // =================================================================
@@ -322,9 +321,9 @@ static final int CLASS_COUNT = 4;
         }
         initScenery();
         prefs = java.util.prefs.Preferences.userNodeForPackage(BulletHellGame.class);
-        highScores[0] = prefs.getInt("hs_easy",   0);
+        highScores[0] = prefs.getInt("hs_easy", 0);
         highScores[1] = prefs.getInt("hs_normal", 0);
-        highScores[2] = prefs.getInt("hs_hard",   0);
+        highScores[2] = prefs.getInt("hs_hard", 0);
         initMusic();
         initSound();
         gameTimer = new Timer(16, this);
@@ -523,7 +522,7 @@ static final int CLASS_COUNT = 4;
             soundCooldown--;
 
         boolean wantsFire = (fireMode == FIRE_SPACE && keys[KeyEvent.VK_SPACE])
-              || fireMode == FIRE_MOUSE;
+                || (fireMode == FIRE_MOUSE && mouseFireHeld);
         int baseSpd = player.speed + (shopSpeedBoost ? 2 : 0);
         int spd = baseSpd;
 
@@ -676,8 +675,12 @@ static final int CLASS_COUNT = 4;
                 if (player.lives <= 0) {
                     player.alive = false;
                     spawnExplosion(player.x + player.size / 2, player.y + player.size / 2, Color.CYAN, 24);
-                    if (score > highScores[difficulty]) { highScores[difficulty] = score; prefs.putInt(new String[]{"hs_easy","hs_normal","hs_hard"}[difficulty], highScores[difficulty]); }
-            Timer goTimer = new Timer(600, ev2 -> gameState = STATE_GAME_OVER);
+                    if (score > highScores[difficulty]) {
+                        highScores[difficulty] = score;
+                        prefs.putInt(new String[] { "hs_easy", "hs_normal", "hs_hard" }[difficulty],
+                                highScores[difficulty]);
+                    }
+                    Timer goTimer = new Timer(600, ev2 -> gameState = STATE_GAME_OVER);
                     goTimer.setRepeats(false);
                     goTimer.start();
                 } else
@@ -699,7 +702,11 @@ static final int CLASS_COUNT = 4;
                     if (player.lives <= 0) {
                         player.alive = false;
                         spawnExplosion(player.x + player.size / 2, player.y + player.size / 2, Color.CYAN, 24);
-                        if (score > highScores[difficulty]) { highScores[difficulty] = score; prefs.putInt(new String[]{"hs_easy","hs_normal","hs_hard"}[difficulty], highScores[difficulty]); }
+                        if (score > highScores[difficulty]) {
+                            highScores[difficulty] = score;
+                            prefs.putInt(new String[] { "hs_easy", "hs_normal", "hs_hard" }[difficulty],
+                                    highScores[difficulty]);
+                        }
                         Timer goTimer = new Timer(600, ev2 -> gameState = STATE_GAME_OVER);
                         goTimer.setRepeats(false);
                         goTimer.start();
@@ -727,7 +734,7 @@ static final int CLASS_COUNT = 4;
                 continue;
             }
             if (!bossTransition && boss.alive && boss.getBounds().intersects(s.getBounds())) {
-                boss.hp -= 200;
+                boss.hp -= 2;
                 score += (shopScoreRush ? 30 : 15);
                 s.dead = true;
                 damageIndicators.add(new DamageIndicator(
@@ -752,7 +759,6 @@ static final int CLASS_COUNT = 4;
         }
 
         // Sentinel orb bullet-reflect
-
 
         // Explosion particles
         Iterator<ExplosionParticle> ep = explosionParticles.iterator();
@@ -805,7 +811,10 @@ static final int CLASS_COUNT = 4;
         enemyBullets.clear();
         if (wave - 1 == 10) {
             // just beat wave 10 — ask player to continue or end
-            if (score > highScores[difficulty]) { highScores[difficulty] = score; prefs.putInt(new String[]{"hs_easy","hs_normal","hs_hard"}[difficulty], highScores[difficulty]); }
+            if (score > highScores[difficulty]) {
+                highScores[difficulty] = score;
+                prefs.putInt(new String[] { "hs_easy", "hs_normal", "hs_hard" }[difficulty], highScores[difficulty]);
+            }
             Timer choiceDelay = new Timer(1500, ev -> gameState = STATE_WAVE10_CHOICE);
             choiceDelay.setRepeats(false);
             choiceDelay.start();
@@ -1088,8 +1097,6 @@ static final int CLASS_COUNT = 4;
         if (phantomBurstCD == 0 && phantomBurstCount >= 3)
             phantomBurstCount = 0;
     }
-
-   
 
     // ── Viper ─────────────────────────────────────────────────────────
     private void updateViper(boolean wantsFire) {
@@ -2702,9 +2709,9 @@ static final int CLASS_COUNT = 4;
         g2.setColor(new Color(160, 160, 230));
         String sub = "SURVIVE  THE  ONSLAUGHT";
         g2.drawString(sub, WIDTH / 2 - g2.getFontMetrics().stringWidth(sub) / 2, 230);
-        drawBtn(g2, btnStart,    "START",    true);
+        drawBtn(g2, btnStart, "START", true);
         drawBtn(g2, btnSettings, "SETTINGS", true);
-        drawBtn(g2, btnQuit,     "QUIT",     true);
+        drawBtn(g2, btnQuit, "QUIT", true);
         // Drawn icons (no Unicode)
         g2.setFont(new Font("Arial", Font.PLAIN, 12));
         g2.setColor(new Color(80, 80, 120));
@@ -2737,8 +2744,9 @@ static final int CLASS_COUNT = 4;
         drawBtn(g2, btnSettBack, "BACK", true);
         g2.setColor(new Color(0, 210, 255, 200));
         g2.fillPolygon(
-            new int[]{btnSettBack.x+18, btnSettBack.x+28, btnSettBack.x+28},
-            new int[]{btnSettBack.y+25, btnSettBack.y+18, btnSettBack.y+32}, 3);;
+                new int[] { btnSettBack.x + 18, btnSettBack.x + 28, btnSettBack.x + 28 },
+                new int[] { btnSettBack.y + 25, btnSettBack.y + 18, btnSettBack.y + 32 }, 3);
+        ;
     }
 
     private void drawVolumeSlider(Graphics2D g2) {
@@ -2777,8 +2785,8 @@ static final int CLASS_COUNT = 4;
         drawBtn(g2, btnDiffBack, "BACK", true);
         g2.setColor(new Color(0, 210, 255, 200));
         g2.fillPolygon(
-            new int[]{btnDiffBack.x+18, btnDiffBack.x+28, btnDiffBack.x+28},
-            new int[]{btnDiffBack.y+25, btnDiffBack.y+18, btnDiffBack.y+32}, 3);
+                new int[] { btnDiffBack.x + 18, btnDiffBack.x + 28, btnDiffBack.x + 28 },
+                new int[] { btnDiffBack.y + 25, btnDiffBack.y + 18, btnDiffBack.y + 32 }, 3);
     }
 
     private void drawDiffBtn(Graphics2D g2, Rectangle r, String title, Color accent, String l1, String l2,
@@ -2787,7 +2795,7 @@ static final int CLASS_COUNT = 4;
         if (sel) {
             for (int glow = 4; glow >= 1; glow--) {
                 g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 9 * glow));
-                g2.fillRoundRect(r.x - glow*3, r.y - glow*3, r.width + glow*6, r.height + glow*6, 18, 18);
+                g2.fillRoundRect(r.x - glow * 3, r.y - glow * 3, r.width + glow * 6, r.height + glow * 6, 18, 18);
             }
         }
         // Body — nearly black when unselected, dark navy when selected
@@ -2795,12 +2803,13 @@ static final int CLASS_COUNT = 4;
         g2.fillRoundRect(r.x, r.y, r.width, r.height, 12, 12);
         // Top shimmer only when selected
         if (sel) {
-            g2.setPaint(new GradientPaint(r.x, r.y, new Color(255,255,255,18), r.x, r.y+r.height, new Color(255,255,255,0)));
-            g2.fillRoundRect(r.x, r.y, r.width, r.height/2, 12, 12);
+            g2.setPaint(new GradientPaint(r.x, r.y, new Color(255, 255, 255, 18), r.x, r.y + r.height,
+                    new Color(255, 255, 255, 0)));
+            g2.fillRoundRect(r.x, r.y, r.width, r.height / 2, 12, 12);
         }
         // Border — bright accent when selected, barely visible when not
-        g2.setColor(sel ? accent : new Color(accent.getRed()/2, accent.getGreen()/2, accent.getBlue()/2, 160));
-g2.setStroke(new BasicStroke(sel ? 2.2f : 1.4f));
+        g2.setColor(sel ? accent : new Color(accent.getRed() / 2, accent.getGreen() / 2, accent.getBlue() / 2, 160));
+        g2.setStroke(new BasicStroke(sel ? 2.2f : 1.4f));
         g2.drawRoundRect(r.x, r.y, r.width, r.height, 12, 12);
         g2.setStroke(new BasicStroke(1));
         // Left accent bar only when selected
@@ -2821,15 +2830,16 @@ g2.setStroke(new BasicStroke(sel ? 2.2f : 1.4f));
         // SELECTED badge on right side
         if (sel) {
             g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 35));
-            g2.fillRoundRect(r.x + r.width - 82, r.y + r.height/2 - 9, 72, 18, 6, 6);
+            g2.fillRoundRect(r.x + r.width - 82, r.y + r.height / 2 - 9, 72, 18, 6, 6);
             g2.setColor(accent);
             g2.setStroke(new BasicStroke(1f));
-            g2.drawRoundRect(r.x + r.width - 82, r.y + r.height/2 - 9, 72, 18, 6, 6);
+            g2.drawRoundRect(r.x + r.width - 82, r.y + r.height / 2 - 9, 72, 18, 6, 6);
             g2.setStroke(new BasicStroke(1));
             g2.setFont(new Font("Arial", Font.BOLD, 9));
             g2.setColor(accent);
             FontMetrics sfm = g2.getFontMetrics();
-            g2.drawString("SELECTED", r.x + r.width - 82 + (72 - sfm.stringWidth("SELECTED"))/2, r.y + r.height/2 + 3);
+            g2.drawString("SELECTED", r.x + r.width - 82 + (72 - sfm.stringWidth("SELECTED")) / 2,
+                    r.y + r.height / 2 + 3);
         }
     }
 
@@ -2843,7 +2853,7 @@ g2.setStroke(new BasicStroke(sel ? 2.2f : 1.4f));
     };
     private static final Color[] CLS_COL = {
             new Color(0, 220, 255), new Color(130, 80, 255), new Color(180, 0, 255),
-             new Color(0, 255, 100)
+            new Color(0, 255, 100)
     };
     // Stats: ATK, SPD, MOB (3 stats only — DEF removed)
     private static final int[][] CLS_STATS = {
@@ -2862,8 +2872,9 @@ g2.setStroke(new BasicStroke(sel ? 2.2f : 1.4f));
         drawBtn(g2, btnClassBack, "BACK", true);
         g2.setColor(new Color(0, 210, 255, 200));
         g2.fillPolygon(
-            new int[]{btnClassBack.x+18, btnClassBack.x+28, btnClassBack.x+28},
-            new int[]{btnClassBack.y+25, btnClassBack.y+18, btnClassBack.y+32}, 3);;
+                new int[] { btnClassBack.x + 18, btnClassBack.x + 28, btnClassBack.x + 28 },
+                new int[] { btnClassBack.y + 25, btnClassBack.y + 18, btnClassBack.y + 32 }, 3);
+        ;
     }
 
     private void drawSmallClassCard(Graphics2D g2, Rectangle r, int id, boolean sel) {
@@ -2950,9 +2961,10 @@ g2.setStroke(new BasicStroke(sel ? 2.2f : 1.4f));
             g2.setFont(new Font("Arial", Font.BOLD, 12));
             g2.setColor(accent);
             String st = "CLICK TO START";
-            int stX = r.x + r.width/2 - g2.getFontMetrics().stringWidth(st)/2 + 6;
+            int stX = r.x + r.width / 2 - g2.getFontMetrics().stringWidth(st) / 2 + 6;
             g2.drawString(st, stX, r.y + r.height - 4);
-            g2.fillPolygon(new int[]{stX-10,stX-10,stX-2}, new int[]{r.y+r.height-13,r.y+r.height-3,r.y+r.height-8}, 3);
+            g2.fillPolygon(new int[] { stX - 10, stX - 10, stX - 2 },
+                    new int[] { r.y + r.height - 13, r.y + r.height - 3, r.y + r.height - 8 }, 3);
         }
     }
 
@@ -3077,13 +3089,13 @@ g2.setStroke(new BasicStroke(sel ? 2.2f : 1.4f));
         g2.setFont(new Font("Courier New", Font.BOLD, 16));
         g2.setColor(Color.WHITE);
         g2.drawString("SCORE: " + score, 10, 24);
-        String[] diffLabels = {"EASY", "NORMAL", "HARD"};
-g2.setFont(new Font("Arial", Font.PLAIN, 10));
-g2.setColor(new Color(120, 120, 180));
-g2.drawString("BEST (" + diffLabels[difficulty] + ")", WIDTH - 100, 38);
-g2.setFont(new Font("Courier New", Font.BOLD, 13));
-g2.setColor(score >= highScores[difficulty] ? new Color(255, 220, 60) : new Color(160, 160, 210));
-g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
+        String[] diffLabels = { "EASY", "NORMAL", "HARD" };
+        g2.setFont(new Font("Arial", Font.PLAIN, 10));
+        g2.setColor(new Color(120, 120, 180));
+        g2.drawString("BEST (" + diffLabels[difficulty] + ")", WIDTH - 100, 38);
+        g2.setFont(new Font("Courier New", Font.BOLD, 13));
+        g2.setColor(score >= highScores[difficulty] ? new Color(255, 220, 60) : new Color(160, 160, 210));
+        g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
         if (wave % 5 == 0) {
             g2.setFont(new Font("Arial", Font.BOLD, 11));
             g2.setColor(new Color(255, 60, 60, (int) (180 + 70 * Math.abs(Math.sin(frameCount * 0.12)))));
@@ -3240,11 +3252,11 @@ g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
         g2.setColor(new Color(90, 160, 120));
         g2.drawString("SHOP (★ = permanent): SPD RF BT SR PS", lx, ly + 12);
     }
-  
+
     private void drawPause(Graphics2D g2) {
         g2.setColor(new Color(0, 0, 0, 180));
         g2.fillRect(0, 0, WIDTH, HEIGHT);
-        int px = WIDTH/2 - 140, py = 150, pw = 280, ph = 300;
+        int px = WIDTH / 2 - 140, py = 150, pw = 280, ph = 300;
         g2.setColor(new Color(8, 8, 28, 245));
         g2.fillRoundRect(px, py, pw, ph, 18, 18);
         g2.setColor(new Color(0, 180, 255, 80));
@@ -3252,331 +3264,353 @@ g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
         g2.drawRoundRect(px, py, pw, ph, 18, 18);
         g2.setStroke(new BasicStroke(1));
         g2.setFont(new Font("Arial", Font.BOLD, 34));
-        g2.setPaint(new GradientPaint(0, 170, new Color(80,220,255), 0, 210, new Color(120,60,255)));
+        g2.setPaint(new GradientPaint(0, 170, new Color(80, 220, 255), 0, 210, new Color(120, 60, 255)));
         String title = "PAUSED";
-        g2.drawString(title, WIDTH/2 - g2.getFontMetrics().stringWidth(title)/2, 205);
+        g2.drawString(title, WIDTH / 2 - g2.getFontMetrics().stringWidth(title) / 2, 205);
         g2.setColor(new Color(0, 160, 255, 60));
-        g2.fillRect(WIDTH/2 - 100, 215, 200, 1);
+        g2.fillRect(WIDTH / 2 - 100, 215, 200, 1);
         if (!pauseConfirmQuit) {
-            drawBtn(g2, btnPauseResume,   "RESUME",   true);
+            drawBtn(g2, btnPauseResume, "RESUME", true);
             drawBtn(g2, btnPauseSettings, "SETTINGS", true);
-            drawBtn(g2, btnPauseQuit,     "QUIT", true);
-            
+            drawBtn(g2, btnPauseQuit, "QUIT", true);
+
             g2.setFont(new Font("Arial", Font.PLAIN, 11));
             g2.setColor(new Color(80, 80, 130));
             String hint = "ESC to resume";
-            g2.drawString(hint, WIDTH/2 - g2.getFontMetrics().stringWidth(hint)/2, py + ph + 18);
+            g2.drawString(hint, WIDTH / 2 - g2.getFontMetrics().stringWidth(hint) / 2, py + ph + 18);
         } else {
             g2.setFont(new Font("Arial", Font.BOLD, 14));
             g2.setColor(new Color(255, 100, 100));
             String q = "Quit this run?";
-            g2.drawString(q, WIDTH/2 - g2.getFontMetrics().stringWidth(q)/2, 270);
+            g2.drawString(q, WIDTH / 2 - g2.getFontMetrics().stringWidth(q) / 2, 270);
             g2.setFont(new Font("Arial", Font.PLAIN, 11));
             g2.setColor(new Color(160, 160, 200));
             String sub = "Progress will be lost.";
-            g2.drawString(sub, WIDTH/2 - g2.getFontMetrics().stringWidth(sub)/2, 292);
-            drawBtn(g2, btnPauseConfirmYes, "YES, QUIT",    true);
-            drawBtn(g2, btnPauseConfirmNo,  "KEEP PLAYING", true);
+            g2.drawString(sub, WIDTH / 2 - g2.getFontMetrics().stringWidth(sub) / 2, 292);
+            drawBtn(g2, btnPauseConfirmYes, "YES, QUIT", true);
+            drawBtn(g2, btnPauseConfirmNo, "KEEP PLAYING", true);
         }
     }
+
     private void drawWave10Choice(Graphics2D g2) {
         // Dark overlay
-        g2.setColor(new Color(0,0,0,200));
-        g2.fillRect(0,0,WIDTH,HEIGHT);
+        g2.setColor(new Color(0, 0, 0, 200));
+        g2.fillRect(0, 0, WIDTH, HEIGHT);
 
         // ── Main panel ───────────────────────────────────────────────
-        int px=WIDTH/2-170, py=120, pw=340, ph=460;
+        int px = WIDTH / 2 - 170, py = 120, pw = 340, ph = 460;
         // Panel shadow
-        g2.setColor(new Color(0,0,0,120));
-        g2.fillRoundRect(px+6, py+6, pw, ph, 20, 20);
+        g2.setColor(new Color(0, 0, 0, 120));
+        g2.fillRoundRect(px + 6, py + 6, pw, ph, 20, 20);
         // Panel body gradient
-        GradientPaint pg = new GradientPaint(px,py,new Color(8,10,32),px,py+ph,new Color(4,5,18));
-        g2.setPaint(pg); g2.fillRoundRect(px,py,pw,ph,20,20);
+        GradientPaint pg = new GradientPaint(px, py, new Color(8, 10, 32), px, py + ph, new Color(4, 5, 18));
+        g2.setPaint(pg);
+        g2.fillRoundRect(px, py, pw, ph, 20, 20);
 
         // Gold top accent strip
-        GradientPaint tg = new GradientPaint(px,py,new Color(255,200,60,0),px+pw/2,py,new Color(255,210,80,220));
-        g2.setPaint(tg); g2.fillRoundRect(px,py,pw,6,20,20); g2.fillRect(px,py+4,pw,2);
+        GradientPaint tg = new GradientPaint(px, py, new Color(255, 200, 60, 0), px + pw / 2, py,
+                new Color(255, 210, 80, 220));
+        g2.setPaint(tg);
+        g2.fillRoundRect(px, py, pw, 6, 20, 20);
+        g2.fillRect(px, py + 4, pw, 2);
 
         // Gold border
         g2.setPaint(null);
-        g2.setColor(new Color(255,200,60,90));
+        g2.setColor(new Color(255, 200, 60, 90));
         g2.setStroke(new BasicStroke(1.6f));
-        g2.drawRoundRect(px,py,pw,ph,20,20);
+        g2.drawRoundRect(px, py, pw, ph, 20, 20);
         g2.setStroke(new BasicStroke(1));
 
         // ── Trophy icon ───────────────────────────────────────────────
-        int tcx=WIDTH/2, tcy=py+62;
+        int tcx = WIDTH / 2, tcy = py + 62;
         // Glow behind trophy
-        g2.setColor(new Color(255,200,50,18));
-        g2.fillOval(tcx-38, tcy-38, 76, 76);
+        g2.setColor(new Color(255, 200, 50, 18));
+        g2.fillOval(tcx - 38, tcy - 38, 76, 76);
 
         // Gold gradient for trophy
-        GradientPaint trG = new GradientPaint(tcx-24,tcy-28,new Color(255,240,120),tcx+24,tcy+30,new Color(200,130,20));
+        GradientPaint trG = new GradientPaint(tcx - 24, tcy - 28, new Color(255, 240, 120), tcx + 24, tcy + 30,
+                new Color(200, 130, 20));
         g2.setPaint(trG);
 
         // Cup bowl — correct upper half (180 start, 180 sweep = top half)
-        g2.fillArc(tcx-24, tcy-24, 48, 38, 180, 180);
+        g2.fillArc(tcx - 24, tcy - 24, 48, 38, 180, 180);
         // Cup sides connecting bowl to stem
-        g2.fillRect(tcx-20, tcy+14, 8, 8);
-        g2.fillRect(tcx+12, tcy+14, 8, 8);
+        g2.fillRect(tcx - 20, tcy + 14, 8, 8);
+        g2.fillRect(tcx + 12, tcy + 14, 8, 8);
         // Stem
-        g2.fillRect(tcx-5, tcy+22, 10, 12);
+        g2.fillRect(tcx - 5, tcy + 22, 10, 12);
         // Base plate
-        g2.fillRoundRect(tcx-18, tcy+34, 36, 7, 4, 4);
+        g2.fillRoundRect(tcx - 18, tcy + 34, 36, 7, 4, 4);
 
         // Handles — must reset paint before drawing
         g2.setPaint(null);
-        g2.setColor(new Color(200,140,20,230));
+        g2.setColor(new Color(200, 140, 20, 230));
         g2.setStroke(new BasicStroke(4f));
-        g2.drawArc(tcx-34, tcy-8, 14, 18, 90, -180);   // left handle
-        g2.drawArc(tcx+20, tcy-8, 14, 18, 90,  180);   // right handle
+        g2.drawArc(tcx - 34, tcy - 8, 14, 18, 90, -180); // left handle
+        g2.drawArc(tcx + 20, tcy - 8, 14, 18, 90, 180); // right handle
         g2.setStroke(new BasicStroke(1));
 
         // Star on cup face
         g2.setPaint(null);
-        g2.setColor(new Color(255,255,180,200));
+        g2.setColor(new Color(255, 255, 180, 200));
         g2.setFont(new Font("Arial", Font.BOLD, 14));
-        g2.drawString("★", tcx-5, tcy+10);
+        g2.drawString("★", tcx - 5, tcy + 10);
 
         // ── Title ─────────────────────────────────────────────────────
-        g2.setFont(new Font("Arial",Font.BOLD,28));
-        GradientPaint titleG = new GradientPaint(0,py+88,new Color(255,230,100),0,py+118,new Color(255,150,30));
+        g2.setFont(new Font("Arial", Font.BOLD, 28));
+        GradientPaint titleG = new GradientPaint(0, py + 88, new Color(255, 230, 100), 0, py + 118,
+                new Color(255, 150, 30));
         g2.setPaint(titleG);
         String t = "WAVE 10 CLEARED!";
-        g2.drawString(t, WIDTH/2-g2.getFontMetrics().stringWidth(t)/2, py+110);
+        g2.drawString(t, WIDTH / 2 - g2.getFontMetrics().stringWidth(t) / 2, py + 110);
 
         // ── Divider ───────────────────────────────────────────────────
         g2.setPaint(null);
-        g2.setColor(new Color(255,200,60,40));
-        g2.fillRect(px+24, py+118, pw-48, 1);
+        g2.setColor(new Color(255, 200, 60, 40));
+        g2.fillRect(px + 24, py + 118, pw - 48, 1);
 
         // ── Score block ───────────────────────────────────────────────
         boolean newRecord = score >= highScores[difficulty];
         // Score row
-        g2.setFont(new Font("Arial",Font.PLAIN,13));
-        g2.setColor(new Color(140,160,210));
-        g2.drawString("SCORE", px+36, py+148);
-        g2.setFont(new Font("Courier New",Font.BOLD,22));
+        g2.setFont(new Font("Arial", Font.PLAIN, 13));
+        g2.setColor(new Color(140, 160, 210));
+        g2.drawString("SCORE", px + 36, py + 148);
+        g2.setFont(new Font("Courier New", Font.BOLD, 22));
         g2.setColor(Color.WHITE);
-        g2.drawString(String.valueOf(score), px+pw-36-g2.getFontMetrics().stringWidth(String.valueOf(score)), py+148);
+        g2.drawString(String.valueOf(score), px + pw - 36 - g2.getFontMetrics().stringWidth(String.valueOf(score)),
+                py + 148);
 
         // High score row
-        g2.setFont(new Font("Arial",Font.PLAIN,13));
-        String[] dnames={"EASY","NORMAL","HARD"};
-        g2.setColor(new Color(140,160,210));
-        g2.drawString("BEST  (" + dnames[difficulty] + ")", px+36, py+174);
-        g2.setFont(new Font("Courier New",Font.BOLD,22));
-        g2.setColor(newRecord ? new Color(255,220,60) : new Color(160,160,200));
-        g2.drawString(String.valueOf(highScores[difficulty]), px+pw-36-g2.getFontMetrics().stringWidth(String.valueOf(highScores[difficulty])), py+174);
+        g2.setFont(new Font("Arial", Font.PLAIN, 13));
+        String[] dnames = { "EASY", "NORMAL", "HARD" };
+        g2.setColor(new Color(140, 160, 210));
+        g2.drawString("BEST  (" + dnames[difficulty] + ")", px + 36, py + 174);
+        g2.setFont(new Font("Courier New", Font.BOLD, 22));
+        g2.setColor(newRecord ? new Color(255, 220, 60) : new Color(160, 160, 200));
+        g2.drawString(String.valueOf(highScores[difficulty]),
+                px + pw - 36 - g2.getFontMetrics().stringWidth(String.valueOf(highScores[difficulty])), py + 174);
 
         // NEW RECORD badge — large centered banner
         if (newRecord) {
-            float pulse = (float)(0.55+0.45*Math.sin(frameCount*0.11));
-            int bdW=200, bdH=30, bdX=WIDTH/2-bdW/2, bdY=py+180;
+            float pulse = (float) (0.55 + 0.45 * Math.sin(frameCount * 0.11));
+            int bdW = 200, bdH = 30, bdX = WIDTH / 2 - bdW / 2, bdY = py + 180;
             // Outer glow
-            g2.setColor(new Color(255,220,50,(int)(40*pulse)));
-            g2.fillRoundRect(bdX-6,bdY-6,bdW+12,bdH+12,14,14);
+            g2.setColor(new Color(255, 220, 50, (int) (40 * pulse)));
+            g2.fillRoundRect(bdX - 6, bdY - 6, bdW + 12, bdH + 12, 14, 14);
             // Badge fill
-            GradientPaint bdG=new GradientPaint(bdX,bdY,new Color(255,210,40),bdX,bdY+bdH,new Color(220,140,0));
+            GradientPaint bdG = new GradientPaint(bdX, bdY, new Color(255, 210, 40), bdX, bdY + bdH,
+                    new Color(220, 140, 0));
             g2.setPaint(bdG);
-            g2.fillRoundRect(bdX,bdY,bdW,bdH,10,10);
+            g2.fillRoundRect(bdX, bdY, bdW, bdH, 10, 10);
             // Shine
-            g2.setColor(new Color(255,255,255,(int)(70*pulse)));
-            g2.fillRoundRect(bdX+2,bdY+2,bdW-4,bdH/2-2,8,8);
+            g2.setColor(new Color(255, 255, 255, (int) (70 * pulse)));
+            g2.fillRoundRect(bdX + 2, bdY + 2, bdW - 4, bdH / 2 - 2, 8, 8);
             // Border
             g2.setPaint(null);
-            g2.setColor(new Color(255,255,180,(int)(200*pulse)));
+            g2.setColor(new Color(255, 255, 180, (int) (200 * pulse)));
             g2.setStroke(new BasicStroke(1.5f));
-            g2.drawRoundRect(bdX,bdY,bdW,bdH,10,10);
+            g2.drawRoundRect(bdX, bdY, bdW, bdH, 10, 10);
             g2.setStroke(new BasicStroke(1));
             // Text
-            g2.setFont(new Font("Arial",Font.BOLD,15));
-            g2.setColor(new Color(30,10,0));
-            String rec="* NEW RECORD! *";
-            FontMetrics rfm=g2.getFontMetrics();
-            g2.drawString(rec, WIDTH/2-rfm.stringWidth(rec)/2, bdY+bdH/2+6);
+            g2.setFont(new Font("Arial", Font.BOLD, 15));
+            g2.setColor(new Color(30, 10, 0));
+            String rec = "* NEW RECORD! *";
+            FontMetrics rfm = g2.getFontMetrics();
+            g2.drawString(rec, WIDTH / 2 - rfm.stringWidth(rec) / 2, bdY + bdH / 2 + 6);
         }
 
         // ── Divider ───────────────────────────────────────────────────
-        g2.setColor(new Color(255,200,60,30));
-        g2.fillRect(px+24, py+206, pw-48, 1);
+        g2.setColor(new Color(255, 200, 60, 30));
+        g2.fillRect(px + 24, py + 206, pw - 48, 1);
 
         // ── Endless mode description ──────────────────────────────────
-        g2.setFont(new Font("Arial",Font.BOLD,14));
-        g2.setColor(new Color(180,230,255));
+        g2.setFont(new Font("Arial", Font.BOLD, 14));
+        g2.setColor(new Color(180, 230, 255));
         String q = "Continue in Endless Mode?";
-        g2.drawString(q, WIDTH/2-g2.getFontMetrics().stringWidth(q)/2, py+236);
+        g2.drawString(q, WIDTH / 2 - g2.getFontMetrics().stringWidth(q) / 2, py + 236);
 
-        g2.setFont(new Font("Arial",Font.PLAIN,11));
-        g2.setColor(new Color(100,120,170));
+        g2.setFont(new Font("Arial", Font.PLAIN, 11));
+        g2.setColor(new Color(100, 120, 170));
         String[] lines = {
-            "Bosses grow stronger with every wave.",
-            "No checkpoints. Score keeps climbing.",
-            "Your record will be saved when you stop."
+                "Bosses grow stronger with every wave.",
+                "No checkpoints. Score keeps climbing.",
+                "Your record will be saved when you stop."
         };
-        int ly = py+256;
+        int ly = py + 256;
         for (String ln : lines) {
-            g2.drawString(ln, WIDTH/2-g2.getFontMetrics().stringWidth(ln)/2, ly);
+            g2.drawString(ln, WIDTH / 2 - g2.getFontMetrics().stringWidth(ln) / 2, ly);
             ly += 16;
         }
 
         // ── Buttons ───────────────────────────────────────────────────
         // KEEP GOING — green accent
-        int b1x=px+20, b1y=py+320, b1w=pw-40, b1h=52;
-        g2.setColor(new Color(0,180,80,30));
-        g2.fillRoundRect(b1x-3,b1y-3,b1w+6,b1h+6,14,14);
-        GradientPaint b1g=new GradientPaint(b1x,b1y,new Color(0,140,60),b1x,b1y+b1h,new Color(0,90,40));
-        g2.setPaint(b1g); g2.fillRoundRect(b1x,b1y,b1w,b1h,12,12);
+        int b1x = px + 20, b1y = py + 320, b1w = pw - 40, b1h = 52;
+        g2.setColor(new Color(0, 180, 80, 30));
+        g2.fillRoundRect(b1x - 3, b1y - 3, b1w + 6, b1h + 6, 14, 14);
+        GradientPaint b1g = new GradientPaint(b1x, b1y, new Color(0, 140, 60), b1x, b1y + b1h, new Color(0, 90, 40));
+        g2.setPaint(b1g);
+        g2.fillRoundRect(b1x, b1y, b1w, b1h, 12, 12);
         g2.setPaint(null);
-        g2.setColor(new Color(0,255,120,180));
+        g2.setColor(new Color(0, 255, 120, 180));
         g2.setStroke(new BasicStroke(1.6f));
-        g2.drawRoundRect(b1x,b1y,b1w,b1h,12,12);
+        g2.drawRoundRect(b1x, b1y, b1w, b1h, 12, 12);
         g2.setStroke(new BasicStroke(1));
         // Shine
-        g2.setColor(new Color(255,255,255,25));
-        g2.fillRoundRect(b1x+2,b1y+2,b1w-4,b1h/2-2,10,10);
-        g2.setFont(new Font("Arial",Font.BOLD,16));
+        g2.setColor(new Color(255, 255, 255, 25));
+        g2.fillRoundRect(b1x + 2, b1y + 2, b1w - 4, b1h / 2 - 2, 10, 10);
+        g2.setFont(new Font("Arial", Font.BOLD, 16));
         g2.setColor(Color.WHITE);
-        String kg=">> KEEP GOING -- ENDLESS";
-        g2.drawString(kg, WIDTH/2-g2.getFontMetrics().stringWidth(kg)/2, b1y+b1h/2+6);
-        btnContinueEndless.setBounds(b1x,b1y,b1w,b1h);
+        String kg = ">> KEEP GOING -- ENDLESS";
+        g2.drawString(kg, WIDTH / 2 - g2.getFontMetrics().stringWidth(kg) / 2, b1y + b1h / 2 + 6);
+        btnContinueEndless.setBounds(b1x, b1y, b1w, b1h);
 
         // END RUN — subtle red/dark
-        int b2x=px+20, b2y=b1y+b1h+12, b2w=pw-40, b2h=44;
-        g2.setColor(new Color(10,10,30));
-        g2.fillRoundRect(b2x,b2y,b2w,b2h,10,10);
-        g2.setColor(new Color(180,60,60,120));
+        int b2x = px + 20, b2y = b1y + b1h + 12, b2w = pw - 40, b2h = 44;
+        g2.setColor(new Color(10, 10, 30));
+        g2.fillRoundRect(b2x, b2y, b2w, b2h, 10, 10);
+        g2.setColor(new Color(180, 60, 60, 120));
         g2.setStroke(new BasicStroke(1.2f));
-        g2.drawRoundRect(b2x,b2y,b2w,b2h,10,10);
+        g2.drawRoundRect(b2x, b2y, b2w, b2h, 10, 10);
         g2.setStroke(new BasicStroke(1));
-        g2.setFont(new Font("Arial",Font.BOLD,14));
-        g2.setColor(new Color(200,120,120));
-        String er="X  END RUN  &  SAVE SCORE";
-        g2.drawString(er, WIDTH/2-g2.getFontMetrics().stringWidth(er)/2, b2y+b2h/2+5);
-        btnEndRun.setBounds(b2x,b2y,b2w,b2h);
+        g2.setFont(new Font("Arial", Font.BOLD, 14));
+        g2.setColor(new Color(200, 120, 120));
+        String er = "X  END RUN  &  SAVE SCORE";
+        g2.drawString(er, WIDTH / 2 - g2.getFontMetrics().stringWidth(er) / 2, b2y + b2h / 2 + 5);
+        btnEndRun.setBounds(b2x, b2y, b2w, b2h);
     }
+
     private void drawGameOver(Graphics2D g2) {
-        g2.setColor(new Color(0,0,0,190));
-        g2.fillRect(0,0,WIDTH,HEIGHT);
+        g2.setColor(new Color(0, 0, 0, 190));
+        g2.fillRect(0, 0, WIDTH, HEIGHT);
 
         // ── Panel ────────────────────────────────────────────────────
-        int px=WIDTH/2-160, py=130, pw=320, ph=430;
-        g2.setColor(new Color(0,0,0,100));
-        g2.fillRoundRect(px+5,py+5,pw,ph,18,18);
-        GradientPaint pg=new GradientPaint(px,py,new Color(22,4,4),px,py+ph,new Color(8,2,2));
-        g2.setPaint(pg); g2.fillRoundRect(px,py,pw,ph,18,18);
+        int px = WIDTH / 2 - 160, py = 130, pw = 320, ph = 430;
+        g2.setColor(new Color(0, 0, 0, 100));
+        g2.fillRoundRect(px + 5, py + 5, pw, ph, 18, 18);
+        GradientPaint pg = new GradientPaint(px, py, new Color(22, 4, 4), px, py + ph, new Color(8, 2, 2));
+        g2.setPaint(pg);
+        g2.fillRoundRect(px, py, pw, ph, 18, 18);
         // Red top strip
-        g2.setPaint(new GradientPaint(px,py,new Color(200,0,0,0),px+pw/2,py,new Color(220,30,30,200)));
-        g2.fillRoundRect(px,py,pw,6,18,18); g2.fillRect(px,py+4,pw,2);
+        g2.setPaint(new GradientPaint(px, py, new Color(200, 0, 0, 0), px + pw / 2, py, new Color(220, 30, 30, 200)));
+        g2.fillRoundRect(px, py, pw, 6, 18, 18);
+        g2.fillRect(px, py + 4, pw, 2);
         g2.setPaint(null);
-        g2.setColor(new Color(200,40,40,80));
+        g2.setColor(new Color(200, 40, 40, 80));
         g2.setStroke(new BasicStroke(1.5f));
-        g2.drawRoundRect(px,py,pw,ph,18,18);
+        g2.drawRoundRect(px, py, pw, ph, 18, 18);
         g2.setStroke(new BasicStroke(1));
 
         // ── GAME OVER title ───────────────────────────────────────────
-        g2.setFont(new Font("Arial",Font.BOLD,46));
+        g2.setFont(new Font("Arial", Font.BOLD, 46));
         // Red glow behind
-        g2.setColor(new Color(255,0,0,30));
-        String go2="GAME OVER";
-        int gx=WIDTH/2-g2.getFontMetrics().stringWidth(go2)/2;
-        for(int gl=6;gl>=1;gl--){g2.setColor(new Color(220,0,0,8*gl));g2.drawString(go2,gx,py+68);}
-        g2.setColor(new Color(230,40,40)); g2.drawString(go2,gx,py+68);
+        g2.setColor(new Color(255, 0, 0, 30));
+        String go2 = "GAME OVER";
+        int gx = WIDTH / 2 - g2.getFontMetrics().stringWidth(go2) / 2;
+        for (int gl = 6; gl >= 1; gl--) {
+            g2.setColor(new Color(220, 0, 0, 8 * gl));
+            g2.drawString(go2, gx, py + 68);
+        }
+        g2.setColor(new Color(230, 40, 40));
+        g2.drawString(go2, gx, py + 68);
         // White shimmer on top half of letters
-        g2.setColor(new Color(255,180,180,40)); g2.drawString(go2,gx,py+64);
+        g2.setColor(new Color(255, 180, 180, 40));
+        g2.drawString(go2, gx, py + 64);
 
         // ── Divider ───────────────────────────────────────────────────
-        g2.setColor(new Color(200,40,40,40));
-        g2.fillRect(px+24,py+80,pw-48,1);
+        g2.setColor(new Color(200, 40, 40, 40));
+        g2.fillRect(px + 24, py + 80, pw - 48, 1);
 
         // ── Stats rows ────────────────────────────────────────────────
-        String[] labels={"FINAL SCORE","BEST SCORE","DIFFICULTY","WAVE REACHED"};
-        String[] dnames={"Easy","Normal","Hard"};
+        String[] labels = { "FINAL SCORE", "BEST SCORE", "DIFFICULTY", "WAVE REACHED" };
+        String[] dnames = { "Easy", "Normal", "Hard" };
         boolean newRec = score > 0 && score >= highScores[difficulty];
-        String[] values={
-            String.valueOf(score),
-            String.valueOf(highScores[difficulty]),
-            dnames[difficulty],
-            String.valueOf(wave-1)
+        String[] values = {
+                String.valueOf(score),
+                String.valueOf(highScores[difficulty]),
+                dnames[difficulty],
+                String.valueOf(wave - 1)
         };
-        Color[] vcols={
-            Color.WHITE,
-            newRec ? new Color(255,220,60) : new Color(160,160,200),
-            new Color[]{new Color(60,220,80),new Color(0,180,255),new Color(255,80,60)}[difficulty],
-            new Color(180,200,255)
+        Color[] vcols = {
+                Color.WHITE,
+                newRec ? new Color(255, 220, 60) : new Color(160, 160, 200),
+                new Color[] { new Color(60, 220, 80), new Color(0, 180, 255), new Color(255, 80, 60) }[difficulty],
+                new Color(180, 200, 255)
         };
-        int rowY = py+112;
-        for(int i=0;i<labels.length;i++){
+        int rowY = py + 112;
+        for (int i = 0; i < labels.length; i++) {
             // Label
-            g2.setFont(new Font("Arial",Font.PLAIN,11));
-            g2.setColor(new Color(120,130,180));
-            g2.drawString(labels[i], px+28, rowY);
+            g2.setFont(new Font("Arial", Font.PLAIN, 11));
+            g2.setColor(new Color(120, 130, 180));
+            g2.drawString(labels[i], px + 28, rowY);
             // Value right-aligned
-            g2.setFont(new Font("Courier New",Font.BOLD,18));
+            g2.setFont(new Font("Courier New", Font.BOLD, 18));
             g2.setColor(vcols[i]);
-            FontMetrics vfm=g2.getFontMetrics();
-            g2.drawString(values[i], px+pw-28-vfm.stringWidth(values[i]), rowY);
+            FontMetrics vfm = g2.getFontMetrics();
+            g2.drawString(values[i], px + pw - 28 - vfm.stringWidth(values[i]), rowY);
             // Row separator
-            g2.setColor(new Color(255,255,255,10));
-            g2.fillRect(px+20,rowY+6,pw-40,1);
+            g2.setColor(new Color(255, 255, 255, 10));
+            g2.fillRect(px + 20, rowY + 6, pw - 40, 1);
             rowY += 46;
             // NEW RECORD badge under best score row — big and centered
-            if(i==1 && newRec){
-                float pulse=(float)(0.55+0.45*Math.sin(frameCount*0.11));
-                int bdW=190, bdH=28, bdX=WIDTH/2-bdW/2, bdY=rowY-40;
+            if (i == 1 && newRec) {
+                float pulse = (float) (0.55 + 0.45 * Math.sin(frameCount * 0.11));
+                int bdW = 190, bdH = 28, bdX = WIDTH / 2 - bdW / 2, bdY = rowY - 40;
                 // Glow
-                g2.setColor(new Color(255,215,0,(int)(35*pulse)));
-                g2.fillRoundRect(bdX-5,bdY-5,bdW+10,bdH+10,12,12);
+                g2.setColor(new Color(255, 215, 0, (int) (35 * pulse)));
+                g2.fillRoundRect(bdX - 5, bdY - 5, bdW + 10, bdH + 10, 12, 12);
                 // Fill
-                GradientPaint bdG2=new GradientPaint(bdX,bdY,new Color(255,210,40),bdX,bdY+bdH,new Color(210,130,0));
+                GradientPaint bdG2 = new GradientPaint(bdX, bdY, new Color(255, 210, 40), bdX, bdY + bdH,
+                        new Color(210, 130, 0));
                 g2.setPaint(bdG2);
-                g2.fillRoundRect(bdX,bdY,bdW,bdH,8,8);
+                g2.fillRoundRect(bdX, bdY, bdW, bdH, 8, 8);
                 // Shine
-                g2.setColor(new Color(255,255,255,(int)(65*pulse)));
-                g2.fillRoundRect(bdX+2,bdY+2,bdW-4,bdH/2-2,6,6);
+                g2.setColor(new Color(255, 255, 255, (int) (65 * pulse)));
+                g2.fillRoundRect(bdX + 2, bdY + 2, bdW - 4, bdH / 2 - 2, 6, 6);
                 // Border
                 g2.setPaint(null);
-                g2.setColor(new Color(255,255,180,(int)(190*pulse)));
+                g2.setColor(new Color(255, 255, 180, (int) (190 * pulse)));
                 g2.setStroke(new BasicStroke(1.4f));
-                g2.drawRoundRect(bdX,bdY,bdW,bdH,8,8);
+                g2.drawRoundRect(bdX, bdY, bdW, bdH, 8, 8);
                 g2.setStroke(new BasicStroke(1));
                 // Text
-                g2.setFont(new Font("Arial",Font.BOLD,14));
-                g2.setColor(new Color(30,10,0));
-                String rec2="★  NEW RECORD!  ★";
-                FontMetrics rfm2=g2.getFontMetrics();
-                g2.drawString(rec2, WIDTH/2-rfm2.stringWidth(rec2)/2, bdY+bdH/2+5);
+                g2.setFont(new Font("Arial", Font.BOLD, 14));
+                g2.setColor(new Color(30, 10, 0));
+                String rec2 = "★  NEW RECORD!  ★";
+                FontMetrics rfm2 = g2.getFontMetrics();
+                g2.drawString(rec2, WIDTH / 2 - rfm2.stringWidth(rec2) / 2, bdY + bdH / 2 + 5);
             }
         }
 
         // ── Divider ───────────────────────────────────────────────────
-        g2.setColor(new Color(200,40,40,30));
-        g2.fillRect(px+24,rowY-10,pw-48,1);
+        g2.setColor(new Color(200, 40, 40, 30));
+        g2.fillRect(px + 24, rowY - 10, pw - 48, 1);
 
         // ── Action hints ──────────────────────────────────────────────
-        int hy = rowY+14;
+        int hy = rowY + 14;
         // R to restart
-        g2.setColor(new Color(15,15,40));
-        g2.fillRoundRect(px+20, hy, pw-40, 40, 8, 8);
-        g2.setColor(new Color(0,180,255,80));
+        g2.setColor(new Color(15, 15, 40));
+        g2.fillRoundRect(px + 20, hy, pw - 40, 40, 8, 8);
+        g2.setColor(new Color(0, 180, 255, 80));
         g2.setStroke(new BasicStroke(1.2f));
-        g2.drawRoundRect(px+20,hy,pw-40,40,8,8);
+        g2.drawRoundRect(px + 20, hy, pw - 40, 40, 8, 8);
         g2.setStroke(new BasicStroke(1));
-        g2.setFont(new Font("Arial",Font.BOLD,14));
+        g2.setFont(new Font("Arial", Font.BOLD, 14));
         g2.setColor(Color.WHITE);
-        g2.drawString("[ R ]  Play Again", WIDTH/2-g2.getFontMetrics().stringWidth("[ R ]  Play Again")/2, hy+26);
+        g2.drawString("[ R ]  Play Again", WIDTH / 2 - g2.getFontMetrics().stringWidth("[ R ]  Play Again") / 2,
+                hy + 26);
 
         hy += 50;
-        g2.setColor(new Color(10,10,28));
-        g2.fillRoundRect(px+20,hy,pw-40,40,8,8);
-        g2.setColor(new Color(100,100,160,60));
+        g2.setColor(new Color(10, 10, 28));
+        g2.fillRoundRect(px + 20, hy, pw - 40, 40, 8, 8);
+        g2.setColor(new Color(100, 100, 160, 60));
         g2.setStroke(new BasicStroke(1.2f));
-        g2.drawRoundRect(px+20,hy,pw-40,40,8,8);
+        g2.drawRoundRect(px + 20, hy, pw - 40, 40, 8, 8);
         g2.setStroke(new BasicStroke(1));
-        g2.setFont(new Font("Arial",Font.BOLD,14));
-        g2.setColor(new Color(180,180,220));
-        g2.drawString("[ M ]  Main Menu", WIDTH/2-g2.getFontMetrics().stringWidth("[ M ]  Main Menu")/2, hy+26);
+        g2.setFont(new Font("Arial", Font.BOLD, 14));
+        g2.setColor(new Color(180, 180, 220));
+        g2.drawString("[ M ]  Main Menu", WIDTH / 2 - g2.getFontMetrics().stringWidth("[ M ]  Main Menu") / 2, hy + 26);
     }
+
     private void drawBtn(Graphics2D g2, Rectangle r, String label, boolean active) {
         if (active) {
             g2.setColor(new Color(0, 150, 255, 25));
@@ -3599,55 +3633,55 @@ g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
         int iy = r.y + r.height / 2;
         if (label.equals("RESUME") || label.equals("START")) {
             g2.setColor(new Color(0, 210, 255, 200));
-            g2.fillPolygon(new int[]{ix, ix, ix+11}, new int[]{iy-9, iy+9, iy}, 3);
+            g2.fillPolygon(new int[] { ix, ix, ix + 11 }, new int[] { iy - 9, iy + 9, iy }, 3);
         } else if (label.equals("SETTINGS")) {
             g2.setColor(new Color(0, 210, 255, 200));
             g2.setStroke(new BasicStroke(1.8f));
-            g2.drawOval(ix-5, iy-5, 10, 10);
+            g2.drawOval(ix - 5, iy - 5, 10, 10);
             for (int i = 0; i < 8; i++) {
                 double a = Math.toRadians(i * 45);
-                g2.drawLine((int)(ix+Math.cos(a)*6),(int)(iy+Math.sin(a)*6),
-                            (int)(ix+Math.cos(a)*10),(int)(iy+Math.sin(a)*10));
+                g2.drawLine((int) (ix + Math.cos(a) * 6), (int) (iy + Math.sin(a) * 6),
+                        (int) (ix + Math.cos(a) * 10), (int) (iy + Math.sin(a) * 10));
             }
             g2.setStroke(new BasicStroke(1));
         } else if (label.equals("QUIT")) {
             g2.setColor(new Color(255, 80, 80, 200));
             g2.setStroke(new BasicStroke(2.2f));
-            g2.drawLine(ix-6, iy-6, ix+6, iy+6);
-            g2.drawLine(ix+6, iy-6, ix-6, iy+6);
+            g2.drawLine(ix - 6, iy - 6, ix + 6, iy + 6);
+            g2.drawLine(ix + 6, iy - 6, ix - 6, iy + 6);
             g2.setStroke(new BasicStroke(1));
         } else if (label.equals("MOUSE CLICK")) {
             g2.setColor(new Color(0, 210, 255, 200));
             g2.setStroke(new BasicStroke(1.5f));
             // mouse body
-            g2.drawRoundRect(ix-6, iy-9, 12, 16, 5, 5);
+            g2.drawRoundRect(ix - 6, iy - 9, 12, 16, 5, 5);
             // middle line
-            g2.drawLine(ix, iy-9, ix, iy-3);
+            g2.drawLine(ix, iy - 9, ix, iy - 3);
             // click dot
-            g2.fillOval(ix-2, iy-6, 4, 4);
+            g2.fillOval(ix - 2, iy - 6, 4, 4);
             g2.setStroke(new BasicStroke(1));
         } else if (label.equals("SPACEBAR")) {
             g2.setColor(new Color(0, 210, 255, 200));
             g2.setStroke(new BasicStroke(1.8f));
             // key outline
-            g2.drawRoundRect(ix-9, iy-6, 18, 12, 4, 4);
+            g2.drawRoundRect(ix - 9, iy - 6, 18, 12, 4, 4);
             // spacebar bottom line
-            g2.drawLine(ix-5, iy+2, ix+5, iy+2);
+            g2.drawLine(ix - 5, iy + 2, ix + 5, iy + 2);
             g2.setStroke(new BasicStroke(1));
         } else if (label.startsWith("MUSIC")) {
             boolean on = label.contains("ON");
             g2.setColor(on ? new Color(0, 210, 255, 200) : new Color(150, 150, 180, 150));
             g2.setStroke(new BasicStroke(1.8f));
             // note stem
-            g2.drawLine(ix+4, iy-8, ix+4, iy+2);
+            g2.drawLine(ix + 4, iy - 8, ix + 4, iy + 2);
             // note head
-            g2.fillOval(ix-2, iy, 7, 6);
+            g2.fillOval(ix - 2, iy, 7, 6);
             // note flag
-            g2.drawLine(ix+4, iy-8, ix+10, iy-5);
+            g2.drawLine(ix + 4, iy - 8, ix + 10, iy - 5);
             if (!on) {
                 // strike-through for OFF
                 g2.setColor(new Color(255, 80, 80, 180));
-                g2.drawLine(ix-8, iy+6, ix+10, iy-10);
+                g2.drawLine(ix - 8, iy + 6, ix + 10, iy - 10);
             }
             g2.setStroke(new BasicStroke(1));
         }
@@ -3743,7 +3777,6 @@ g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
     public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() < 256)
             keys[e.getKeyCode()] = true;
-       
 
         if (gameState == STATE_GAME_OVER) {
             if (e.getKeyCode() == KeyEvent.VK_R)
@@ -3787,20 +3820,20 @@ g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
     public void mouseClicked(MouseEvent e) {
         Point p = e.getPoint();
         if (gameState == STATE_GAME_OVER) {
-    int px = WIDTH/2-160, pw = 320;
-    // calculate hy same as drawGameOver — approximate button Y positions
-    if (p.x >= px+20 && p.x <= px+pw-20) {
-        if (p.y >= 440 && p.y <= 480)
-            startGame();
-        else if (p.y >= 490 && p.y <= 530) {
-            enemyBullets.clear();
-            playerBullets.clear();
-            powerUps.clear();
-            gameState = STATE_MENU;
-            return;
-        }
-    }
-} else if (gameState == STATE_MENU) {
+            int px = WIDTH / 2 - 160, pw = 320;
+            // calculate hy same as drawGameOver — approximate button Y positions
+            if (p.x >= px + 20 && p.x <= px + pw - 20) {
+                if (p.y >= 440 && p.y <= 480)
+                    startGame();
+                else if (p.y >= 490 && p.y <= 530) {
+                    enemyBullets.clear();
+                    playerBullets.clear();
+                    powerUps.clear();
+                    gameState = STATE_MENU;
+                    return;
+                }
+            }
+        } else if (gameState == STATE_MENU) {
             if (btnStart.contains(p))
                 gameState = STATE_DIFF_SEL;
             else if (btnSettings.contains(p))
@@ -3821,8 +3854,10 @@ g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
                         sequencer.stop();
                 }
             } else if (btnSettBack.contains(p)) {
-                if (pauseInSettings) { pauseInSettings = false; }
-                else gameState = STATE_MENU;
+                if (pauseInSettings) {
+                    pauseInSettings = false;
+                } else
+                    gameState = STATE_MENU;
             }
         } else if (gameState == STATE_PAUSE) {
             if (!pauseConfirmQuit) {
@@ -3842,8 +3877,12 @@ g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
                     powerUps.clear();
                     pauseInSettings = false;
                     pauseConfirmQuit = false;
-                    if (score > highScores[difficulty]) { highScores[difficulty] = score; prefs.putInt(new String[]{"hs_easy","hs_normal","hs_hard"}[difficulty], highScores[difficulty]); }
-gameState = STATE_GAME_OVER;
+                    if (score > highScores[difficulty]) {
+                        highScores[difficulty] = score;
+                        prefs.putInt(new String[] { "hs_easy", "hs_normal", "hs_hard" }[difficulty],
+                                highScores[difficulty]);
+                    }
+                    gameState = STATE_GAME_OVER;
                 } else if (btnPauseConfirmNo.contains(p)) {
                     pauseConfirmQuit = false;
                 }
@@ -3884,7 +3923,11 @@ gameState = STATE_GAME_OVER;
             if (btnContinueEndless.contains(p)) {
                 leaveShop();
             } else if (btnEndRun.contains(p)) {
-                if (score > highScores[difficulty]) { highScores[difficulty] = score; prefs.putInt(new String[]{"hs_easy","hs_normal","hs_hard"}[difficulty], highScores[difficulty]); }
+                if (score > highScores[difficulty]) {
+                    highScores[difficulty] = score;
+                    prefs.putInt(new String[] { "hs_easy", "hs_normal", "hs_hard" }[difficulty],
+                            highScores[difficulty]);
+                }
                 gameState = STATE_GAME_OVER;
             }
         }
@@ -4003,7 +4046,7 @@ gameState = STATE_GAME_OVER;
                     case CLASS_PHANTOM:
                         shipColor = new Color(180, 0, 255);
                         break;
-                    
+
                     case CLASS_VIPER:
                         shipColor = new Color(0, 255, 100);
                         break;
@@ -5410,7 +5453,7 @@ gameState = STATE_GAME_OVER;
 
     class KitsuneLanceBullet extends Bullet {
         double speed;
-        static final double INITIAL_SPEED = 5.0;
+        static final double INITIAL_SPEED = 7.0;
         static final double MIN_SPEED = 4.5;
         static final double DECEL = 0.88;
         final java.util.Deque<double[]> trail = new java.util.ArrayDeque<>();
