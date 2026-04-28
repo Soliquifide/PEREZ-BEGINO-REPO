@@ -67,4 +67,12 @@ A fast-paced bullet hell game where the player dodges enemy attacks and survives
 ## Authors
 
 - Ashton Begino
-- Myco Perez
+- Mycho Perez
+
+## Pictures of the Game
+![image alt](https://github.com/Soliquifide/PEREZ-BEGINO-REPO/blob/0759d152fc7463236aaa66b1998bcbd10f527192/23cea4c5-3897-4086-a58f-daba93a93bdf.jpg)
+![image alt](https://github.com/Soliquifide/PEREZ-BEGINO-REPO/blob/0759d152fc7463236aaa66b1998bcbd10f527192/5a17ddec-17ad-47c1-a464-58fe9c43f674.jpg)
+![image alt](https://github.com/Soliquifide/PEREZ-BEGINO-REPO/blob/0759d152fc7463236aaa66b1998bcbd10f527192/6b791625-fbb5-42e3-a443-01b7dfd9d1f2.jpg)
+![image alt](https://github.com/Soliquifide/PEREZ-BEGINO-REPO/blob/0759d152fc7463236aaa66b1998bcbd10f527192/e9712ac5-81fd-4613-8bb1-cdbf06d4fb71.jpg)
+
+
