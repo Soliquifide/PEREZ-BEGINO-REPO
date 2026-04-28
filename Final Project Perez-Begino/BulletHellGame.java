@@ -27,12 +27,12 @@ public class BulletHellGame extends JPanel
     static final int FIRE_MOUSE = 0;
     static final int FIRE_SPACE = 1;
 
-static final int PU_DOUBLE_SHOT = 0;
-static final int PU_SHIELD = 1;
-static final int PU_SPEED_BOOST = 2;
-static final int PU_SCORE_BURST = 3;
-static final int PU_HEAL = 4;
-static final int PU_COUNT = 5;
+    static final int PU_DOUBLE_SHOT = 0;
+    static final int PU_SHIELD = 1;
+    static final int PU_SPEED_BOOST = 2;
+    static final int PU_SCORE_BURST = 3;
+    static final int PU_HEAL = 4;
+    static final int PU_COUNT = 5;
 
     // Machine Gunner heat
     static final int MAX_HEAT = 100;
@@ -108,7 +108,7 @@ static final int PU_COUNT = 5;
             "ECHO SHOT", // echo bullet
             "DEATH MARK" // one-hit kill
     };
-   static final String[] SHOP_DESCS = {
+    static final String[] SHOP_DESCS = {
             "+1 life permanently",
             "Move speed +2 forever",
             "2× fire rate forever",
@@ -161,15 +161,15 @@ static final int PU_COUNT = 5;
     private boolean shopBulletTime = false;
     private boolean shopScoreRush = false;
     private boolean shopPhaseShift = false;
-private int ghostWalkTimer = 0;
-private int bulletTimeTimer = 0;
-private boolean hasSingularity = false;
-private boolean voidMagnetReady = false;
-private boolean voidMagnetActive = false;
-private int voidMagnetTimer = 0;
-private boolean shopEchoShot = false;
-private int echoShotCD = 0;
-private boolean hasDeathMark = false;
+    private int ghostWalkTimer = 0;
+    private int bulletTimeTimer = 0;
+    private boolean hasSingularity = false;
+    private boolean voidMagnetReady = false;
+    private boolean voidMagnetActive = false;
+    private int voidMagnetTimer = 0;
+    private boolean shopEchoShot = false;
+    private int echoShotCD = 0;
+    private boolean hasDeathMark = false;
     private int powerUpDropCD = 0;
     private int sceneTransAlpha = 0;
     private final int[] s1x = new int[60], s1y = new int[60], s1b = new int[60];
@@ -258,11 +258,10 @@ private boolean hasDeathMark = false;
 
     // PowerUp timers
     private boolean hasShield = false;
-    private boolean doubleShot = false;  // ← add this line
-   private int shieldTimer = 0;
-   private int doubleShotTimer = 0;
-   private int speedBoostTimer = 0;
-
+    private boolean doubleShot = false; // ← add this line
+    private int shieldTimer = 0;
+    private int doubleShotTimer = 0;
+    private int speedBoostTimer = 0;
 
     private String pickupMsg = "";
     private int pickupTimer = 0;
@@ -342,9 +341,15 @@ private boolean hasDeathMark = false;
         // Clamp cursor inside game window
         addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
             @Override
-            public void mouseMoved(java.awt.event.MouseEvent e) { clampCursor(e); }
+            public void mouseMoved(java.awt.event.MouseEvent e) {
+                clampCursor(e);
+            }
+
             @Override
-            public void mouseDragged(java.awt.event.MouseEvent e) { clampCursor(e); }
+            public void mouseDragged(java.awt.event.MouseEvent e) {
+                clampCursor(e);
+            }
+
             private void clampCursor(java.awt.event.MouseEvent e) {
                 try {
                     java.awt.Point loc = getLocationOnScreen();
@@ -353,7 +358,8 @@ private boolean hasDeathMark = false;
                     int cy = Math.max(loc.y, Math.min(ay, loc.y + HEIGHT - 1));
                     if (cx != ax || cy != ay)
                         new java.awt.Robot().mouseMove(cx, cy);
-                } catch (Exception ex) {}
+                } catch (Exception ex) {
+                }
             }
         });
         Random sr = new Random(7777);
@@ -606,32 +612,26 @@ private boolean hasDeathMark = false;
         if (shieldTimer > 0 && --shieldTimer == 0)
             hasShield = false;
         // Echo Shot: spawn delayed copy of last player bullet direction
-        if (shopEchoShot && echoShotCD == 18 && !playerBullets.isEmpty()) {
-            Bullet last = playerBullets.get(playerBullets.size() - 1);
-            Bullet echo = new Bullet(last.x + 10, last.y, last.dx * 0.75, last.dy * 0.75,
-                    new Color(255, 100, 200, 180), false);
-            playerBullets.add(echo);
-            echoShotCD = 0;
-        }
-        if (shopEchoShot && firingThisFrame && echoShotCD == 0) echoShotCD = 18;
+        // echo shot removed
         if (ghostWalkTimer > 0 && --ghostWalkTimer == 0)
             shopPhaseShift = false;
         if (bulletTimeTimer > 0 && --bulletTimeTimer == 0)
             shopBulletTime = false;
         if (voidMagnetTimer > 0 && --voidMagnetTimer == 0)
             voidMagnetActive = false;
-        if (echoShotCD > 0) echoShotCD--;
+        if (echoShotCD > 0)
+            echoShotCD--;
         if (doubleShotTimer > 0 && --doubleShotTimer == 0)
             doubleShot = false;
-        if (speedBoostTimer == 300) spd = Math.min(spd + 3, 10);
-if (speedBoostTimer > 0) speedBoostTimer--;
-if (speedBoostTimer == 0 && spd > 5) spd = 5;
+        if (speedBoostTimer > 0 && --speedBoostTimer == 0)
+            player.speed = 5;
         if (pickupTimer > 0)
             pickupTimer--;
 
         if (frameCount % 360 == 0 && !bossTransition) {
             int type = (frameCount / 360) % PU_COUNT;
-            boolean already = (type == PU_DOUBLE_SHOT && doubleShot) || (type == PU_SHIELD && hasShield) || (type == PU_SPEED_BOOST && speedBoostTimer > 0);
+            boolean already = (type == PU_DOUBLE_SHOT && doubleShot) || (type == PU_SHIELD && hasShield)
+                    || (type == PU_SPEED_BOOST && speedBoostTimer > 0);
             if (!already)
                 powerUps.add(new PowerUp(rand.nextInt(WIDTH - 80) + 40, -60, type));
         }
@@ -713,7 +713,7 @@ if (speedBoostTimer == 0 && spd > 5) spd = 5;
         for (int i = enemyBullets.size() - 1; i >= 0; i--) {
             Bullet b = enemyBullets.get(i);
             // Bullet Time: enemy bullets move at ~55% speed (skip update on odd frames)
-            if (!shopBulletTime || frameCount % 2 == 0)
+            if (wave == 10 || !shopBulletTime || frameCount % 2 == 0)
                 b.update();
             // Void Magnet: push bullets away from player
             if (voidMagnetActive) {
@@ -953,7 +953,7 @@ if (speedBoostTimer == 0 && spd > 5) spd = 5;
                 shopScoreRush = true;
                 pickupMsg = "GOLD RUSH — 2x SCORE!";
                 break;
-           case SHOP_PHASE_SHIFT:
+            case SHOP_PHASE_SHIFT:
                 shopPhaseShift = true;
                 ghostWalkTimer = 300;
                 pickupMsg = "GHOST WALK \n 5s INVINCIBILITY!";
@@ -967,7 +967,6 @@ if (speedBoostTimer == 0 && spd > 5) spd = 5;
                 pickupMsg = "VOID MAGNET READY! [Q] TO USE";
                 break;
             case SHOP_ECHO_SHOT:
-                shopEchoShot = true;
                 pickupMsg = "ECHO SHOT — GHOST BULLETS!";
                 break;
             case SHOP_DEATH_MARK:
@@ -1203,7 +1202,8 @@ if (speedBoostTimer == 0 && spd > 5) spd = 5;
                 bvy = (dy / len) * 7;
             }
             snakes.add(new Snake(pcx, pcy, bvx, bvy));
-if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
+            if (doubleShot)
+                snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
             viperFireCD = rate;
             if (soundCooldown == 0) {
                 playSpacegunSound();
@@ -1407,6 +1407,7 @@ if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
                 break;
             case PU_SPEED_BOOST:
                 speedBoostTimer = 300;
+                player.speed = Math.min(player.speed + 3, 10);
                 pickupMsg = "SPEED BOOST!";
                 break;
             case PU_SCORE_BURST:
@@ -1414,9 +1415,13 @@ if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
                 pickupMsg = "+500 SCORE BURST!";
                 break;
             case PU_HEAL:
-                int maxLives = new int[]{5, 3, 2}[difficulty];
-                if (player.lives < maxLives) { player.lives++; pickupMsg = "HEAL +1 LIFE!"; }
-                else { pickupMsg = "ALREADY FULL HP!"; }
+                int maxLives = new int[] { 5, 3, 2 }[difficulty];
+                if (player.lives < maxLives) {
+                    player.lives++;
+                    pickupMsg = "HEAL +1 LIFE!";
+                } else {
+                    pickupMsg = "ALREADY FULL HP!";
+                }
                 break;
         }
         pickupTimer = 120;
@@ -2079,7 +2084,7 @@ if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
             g2.fillRoundRect(rx + cardW / 2 - 30, cardY + 96, 60, 13, 5, 5);
             g2.setColor(new Color(6, 4, 18));
             String permLabel = (idx == SHOP_BULLET_TIME || idx == SHOP_PHASE_SHIFT) ? "⏱ TEMPORARY" : "★ PERMANENT ★";
-                g2.drawString(permLabel, rx + cardW / 2 - g2.getFontMetrics().stringWidth(permLabel) / 2,
+            g2.drawString(permLabel, rx + cardW / 2 - g2.getFontMetrics().stringWidth(permLabel) / 2,
                     cardY + 106);
 
             // Item name
@@ -2196,6 +2201,10 @@ if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
         String contLbl = "ENTER THE FRAY  →";
         g2.drawString(contLbl, cont.x + cont.width / 2 - g2.getFontMetrics().stringWidth(contLbl) / 2,
                 cont.y + cont.height / 2 + 7);
+        for (int i = 0; i < SHOP_OFFERED; i++) {
+            int rx = cx0 + i * (cardW + gap);
+            btnShopItems[i].setBounds(rx, cardY, cardW, cardH);
+        }
         btnShopContinue.setBounds(cont.x, cont.y, cont.width, cont.height);
 
         // Pickup flash
@@ -3236,12 +3245,13 @@ if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
         g2.setFont(new Font("Courier New", Font.BOLD, 16));
         g2.setColor(Color.WHITE);
         g2.drawString("SCORE: " + score, 10, 24);
-        String[] diffLabels = { "EASY", "NORMAL", "HARD" };
+        g2.setFont(new Font("Arial", Font.PLAIN, 10));
+        g2.setColor(new Color(120, 120, 180));
         g2.setFont(new Font("Arial", Font.PLAIN, 10));
         g2.setColor(new Color(120, 120, 180));
         if (hasSingularity) {
             g2.setFont(new Font("Arial", Font.BOLD, 11));
-            g2.setColor(new Color(255, 80, 80, (int)(180 + 75 * Math.abs(Math.sin(frameCount * 0.08)))));
+            g2.setColor(new Color(255, 80, 80, (int) (180 + 75 * Math.abs(Math.sin(frameCount * 0.08)))));
             g2.drawString("SINGULARITY READY", WIDTH - 145, HEIGHT - 70);
             g2.setFont(new Font("Arial", Font.PLAIN, 9));
             g2.setColor(new Color(200, 200, 200));
@@ -3387,8 +3397,7 @@ if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
             px = drawHudIcon(g2, px, py, "VM", SHOP_ACCENT[8], 1f, false);
         if (voidMagnetActive)
             px = drawHudIcon(g2, px, py, "VM!", SHOP_ACCENT[8], (float) voidMagnetTimer / 480f, false);
-        if (shopEchoShot)
-            px = drawHudIcon(g2, px, py, "ECH*", SHOP_ACCENT[9], 1f, true);
+        // echo shot removed
         if (hasDeathMark)
             px = drawHudIcon(g2, px, py, "DM", SHOP_ACCENT[10], 1f, false);
     }
@@ -3966,7 +3975,7 @@ if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
                 gameState = STATE_MENU;
             }
         }
-       if (gameState == STATE_PLAYING && e.getKeyCode() == KeyEvent.VK_Q) {
+        if (gameState == STATE_PLAYING && e.getKeyCode() == KeyEvent.VK_Q) {
             if (voidMagnetReady) {
                 voidMagnetReady = false;
                 voidMagnetActive = true;
@@ -3999,8 +4008,8 @@ if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
             startGame();
         if (gameState == STATE_SHOP && e.getKeyCode() == KeyEvent.VK_ENTER)
             leaveShop();
-            }
-        
+    }
+
     @Override
     public void keyReleased(KeyEvent e) {
         if (e.getKeyCode() < 256)
@@ -4180,6 +4189,12 @@ if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
                 return new Color(0, 220, 255);
             case PU_SHIELD:
                 return new Color(80, 120, 255);
+            case PU_SPEED_BOOST:
+                return new Color(255, 200, 0);
+            case PU_SCORE_BURST:
+                return new Color(255, 140, 0);
+            case PU_HEAL:
+                return new Color(60, 220, 80);
             default:
                 return Color.WHITE;
         }
@@ -4191,11 +4206,16 @@ if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
                 return "2x";
             case PU_SHIELD:
                 return "SH";
+            case PU_SPEED_BOOST:
+                return "SPD";
+            case PU_SCORE_BURST:
+                return "+500";
+            case PU_HEAL:
+                return "HP";
             default:
                 return "?";
         }
     }
-
 
     static String puFullName(int type) {
         switch (type) {
@@ -4292,7 +4312,7 @@ if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
             this.y = (int) by;
             this.waveNum = wave;
             this.isApex = (wave % 5 == 0 && wave != 10);
-            maxHp = hp = isApex ? (10 + wave * 20) * 1.1 : Math.min(125, 10 + wave * 20);
+            maxHp = hp = isApex ? (10 + wave * 20) * 1.1 : (waveNum == 10 ? 150 : Math.min(125, 10 + wave * 20));
             laserInterval = isApex ? Math.max(120, 260 - wave * 8) : 999999;
             laserCooldown = isApex ? laserInterval / 2 : 999999;
         }
