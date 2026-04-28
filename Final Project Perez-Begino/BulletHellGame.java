@@ -957,7 +957,8 @@ public class BulletHellGame extends JPanel
         // Randomly pick 3 distinct items from the full pool of 10
         java.util.List<Integer> pool = new java.util.ArrayList<>();
         for (int i = 0; i < SHOP_POOL_SIZE; i++) {
-            if (i == SHOP_DEATH_MARK && deathMarkUsed) continue;
+            if (i == SHOP_DEATH_MARK && deathMarkUsed)
+                continue;
             pool.add(i);
         }
         java.util.Collections.shuffle(pool, rand);
@@ -3292,7 +3293,7 @@ public class BulletHellGame extends JPanel
         g2.setColor(new Color(120, 120, 180));
         g2.setFont(new Font("Arial", Font.PLAIN, 10));
         g2.setColor(new Color(120, 120, 180));
-     int kbY = HEIGHT - 50;
+        int kbY = HEIGHT - 50;
         if (hasDeathMark) {
             g2.setFont(new Font("Arial", Font.PLAIN, 9));
             g2.setColor(new Color(200, 200, 200));
@@ -4116,7 +4117,9 @@ public class BulletHellGame extends JPanel
             else if (btnMusicToggle.contains(p)) {
                 musicEnabled = !musicEnabled;
                 if (musicEnabled) {
-                    switchToTrack(currentTrack == -1 ? 0 : currentTrack, false);
+                    int track = getTrackForWave(wave);
+                    currentTrack = -1;
+                    switchToTrack(track, false);
                 } else {
                     stopAllClips();
                 }
