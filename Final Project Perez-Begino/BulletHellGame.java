@@ -27,7 +27,6 @@ public class BulletHellGame extends JPanel
     static final int FIRE_MOUSE = 0;
     static final int FIRE_SPACE = 1;
 
-    static final int PU_DOUBLE_SHOT = 0;
     static final int PU_SHIELD = 1;
     static final int PU_SPEED_BOOST = 2;
     static final int PU_SCORE_BURST = 3;
@@ -262,9 +261,7 @@ public class BulletHellGame extends JPanel
 
     // PowerUp timers
     private boolean hasShield = false;
-    private boolean doubleShot = false; // ← add this line
     private int shieldTimer = 0;
-    private int doubleShotTimer = 0;
     private int speedBoostTimer = 0;
 
     private String pickupMsg = "";
@@ -770,8 +767,6 @@ public class BulletHellGame extends JPanel
         if (voidMagnetTimer > 0 && --voidMagnetTimer == 0)
             voidMagnetActive = false;
 
-        if (doubleShotTimer > 0 && --doubleShotTimer == 0)
-            doubleShot = false;
         if (speedBoostTimer > 0 && --speedBoostTimer == 0)
             player.speed = 5;
         if (pickupTimer > 0)
@@ -779,7 +774,7 @@ public class BulletHellGame extends JPanel
 
         if (frameCount % 360 == 0 && !bossTransition) {
             int type = (frameCount / 360) % PU_COUNT;
-            boolean already = (type == PU_DOUBLE_SHOT && doubleShot) || (type == PU_SHIELD && hasShield)
+            boolean already = (type == PU_SHIELD && hasShield)
                     || (type == PU_SPEED_BOOST && speedBoostTimer > 0);
             if (!already)
                 powerUps.add(new PowerUp(rand.nextInt(WIDTH - 80) + 40, -60, type));
@@ -843,7 +838,7 @@ public class BulletHellGame extends JPanel
                 // Drop a field powerup: only 1-in-60 chance AND respect cooldown
                 if (powerUpDropCD <= 0 && rand.nextInt(60) == 0) {
                     int dt = rand.nextInt(PU_COUNT);
-                    boolean dup = (dt == PU_DOUBLE_SHOT && doubleShot) || (dt == PU_SHIELD && hasShield);
+                    boolean dup = (dt == PU_SHIELD && hasShield);
                     if (!dup) {
                         powerUps.add(new PowerUp(boss.x + boss.width / 2, boss.y + boss.height, dt));
                         powerUpDropCD = 180; // ~3 second gap between drops
@@ -1163,15 +1158,8 @@ public class BulletHellGame extends JPanel
                 bvx = (dx / len) * bs;
                 bvy = (dy / len) * bs;
             }
-            if (doubleShot) {
-                double px = -bvy / bs, py = bvx / bs;
-                playerBullets.add(new Bullet(pcx + px * 8, pcy + py * 8, bvx, bvy, Color.CYAN, false));
-                playerBullets.add(new Bullet(pcx - px * 8, pcy - py * 8, bvx, bvy, Color.CYAN, false));
-                heat += HEAT_PER_SHOT * 2;
-            } else {
-                playerBullets.add(new Bullet(pcx, pcy, bvx, bvy, Color.CYAN, false));
+            playerBullets.add(new Bullet(pcx, pcy, bvx, bvy, Color.CYAN, false));
                 heat += HEAT_PER_SHOT;
-            }
             if (soundCooldown == 0) {
                 playSpacegunSound();
                 soundCooldown = FIRE_RATE;
@@ -1343,8 +1331,7 @@ public class BulletHellGame extends JPanel
                 bvy = (dy / len) * 7;
             }
             snakes.add(new Snake(pcx, pcy, bvx, bvy));
-            if (doubleShot)
-                snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
+          
             viperFireCD = rate;
             if (soundCooldown == 0) {
                 playSpacegunSound();
@@ -1643,11 +1630,6 @@ public class BulletHellGame extends JPanel
 
     private void applyPowerUp(int type) {
         switch (type) {
-            case PU_DOUBLE_SHOT:
-                doubleShot = true;
-                doubleShotTimer = 600;
-                pickupMsg = "DOUBLE SHOT!";
-                break;
             case PU_SHIELD:
                 hasShield = true;
                 shieldTimer = 600;
@@ -3625,8 +3607,7 @@ public class BulletHellGame extends JPanel
     private void drawActivePowerupIcons(Graphics2D g2) {
         int px = 10, py = 36;
         // ── Boss drop powerups (timed, show draining bar) ─────────────
-        if (doubleShot)
-            px = drawHudIcon(g2, px, py, "2x", new Color(255, 200, 60), (float) doubleShotTimer / 480f, false);
+
         if (hasShield)
             px = drawHudIcon(g2, px, py, "SH", new Color(80, 180, 255), (float) shieldTimer / 600f, false);
         // ── Shop permanent upgrades (pulsing ★ bar) ────────────────────
@@ -4158,8 +4139,7 @@ public class BulletHellGame extends JPanel
         novaParticles.clear();
         hasShield = false;
         shieldTimer = 0;
-        doubleShot = false;
-        doubleShotTimer = 0;
+       
         pickupMsg = "";
         pickupTimer = 0;
         shakeTimer = 0;
@@ -4446,8 +4426,7 @@ public class BulletHellGame extends JPanel
     // =================================================================
     static Color puColor(int type) {
         switch (type) {
-            case PU_DOUBLE_SHOT:
-                return new Color(0, 220, 255);
+            
             case PU_SHIELD:
                 return new Color(80, 120, 255);
             case PU_SPEED_BOOST:
@@ -4463,8 +4442,7 @@ public class BulletHellGame extends JPanel
 
     static String puLabel(int type) {
         switch (type) {
-            case PU_DOUBLE_SHOT:
-                return "2x";
+        
             case PU_SHIELD:
                 return "SH";
             case PU_SPEED_BOOST:
@@ -4480,8 +4458,7 @@ public class BulletHellGame extends JPanel
 
     static String puFullName(int type) {
         switch (type) {
-            case PU_DOUBLE_SHOT:
-                return "DOUBLE";
+       
             case PU_SHIELD:
                 return "SHIELD";
             default:
