@@ -27,9 +27,12 @@ public class BulletHellGame extends JPanel
     static final int FIRE_MOUSE = 0;
     static final int FIRE_SPACE = 1;
 
-    static final int PU_DOUBLE_SHOT = 0;
-    static final int PU_SHIELD = 1;
-    static final int PU_COUNT = 2;
+static final int PU_DOUBLE_SHOT = 0;
+static final int PU_SHIELD = 1;
+static final int PU_SPEED_BOOST = 2;
+static final int PU_SCORE_BURST = 3;
+static final int PU_HEAL = 4;
+static final int PU_COUNT = 5;
 
     // Machine Gunner heat
     static final int MAX_HEAT = 100;
@@ -86,7 +89,10 @@ public class BulletHellGame extends JPanel
     static final int SHOP_PHASE_SHIFT = 5; // invincible frame on dash — permanent
     static final int SHOP_NUKE = 6; // clear all bullets (instant)
     static final int SHOP_REPAIR = 7; // restore 1 HP (instant)
-    static final int SHOP_POOL_SIZE = 8;
+    static final int SHOP_VOID_MAGNET = 8; // repel bullets — timed, Q to activate
+    static final int SHOP_ECHO_SHOT = 9; // echo bullet — permanent
+    static final int SHOP_DEATH_MARK = 10; // next hit kills boss — one use
+    static final int SHOP_POOL_SIZE = 11;
     static final int SHOP_OFFERED = 3;
 
     static final String[] SHOP_NAMES = {
@@ -97,17 +103,23 @@ public class BulletHellGame extends JPanel
             "GOLD RUSH", // score rush
             "GHOST WALK", // phase shift / invincibility
             "SINGULARITY", // nuke
-            "NANO MEND" // repair
+            "NANO MEND", // repair
+            "VOID MAGNET", // repel bullets
+            "ECHO SHOT", // echo bullet
+            "DEATH MARK" // one-hit kill
     };
-    static final String[] SHOP_DESCS = {
+   static final String[] SHOP_DESCS = {
             "+1 life permanently",
             "Move speed +2 forever",
             "2× fire rate forever",
-            "Enemy bullets half speed forever",
+            "Bullets half speed (10s)",
             "2× score per kill forever",
-            "Brief invincibility on hit forever",
+            "Invincible on hit (5s)",
             "Clears all enemy bullets",
-            "Restore 1 HP"
+            "Restore 1 HP",
+            "Repels bullets (8s) [Q]",
+            "Fires an echo bullet forever",
+            "Next hit instantly kills boss"
     };
     static final String[] SHOP_FLAVORS = {
             "\"Death? Not today.\"",
@@ -117,17 +129,20 @@ public class BulletHellGame extends JPanel
             "\"Every kill, doubled.\"",
             "\"You were never here.\"",
             "\"Everything. Gone.\"",
-            "\"Patching wounds mid-war.\""
+            "\"Patching wounds mid-war.\"",
+            "\"Nothing comes close.\"",
+            "\"One shot. Two wounds.\"",
+            "\"One touch. Game over.\""
     };
     // 0=Common 1=Rare 2=Legendary
-    static final int[] SHOP_RARITY = { 1, 0, 1, 2, 1, 2, 1, 0 };
+    static final int[] SHOP_RARITY = { 1, 0, 1, 2, 1, 2, 1, 0, 1, 0, 2 };
     static final String[] RARITY_LABEL = { "COMMON", "RARE", "LEGENDARY" };
     static final Color[] RARITY_COLOR = {
             new Color(160, 160, 180),
             new Color(80, 160, 255),
             new Color(255, 180, 0)
     };
-    static final int[] SHOP_COSTS = { 500, 150, 280, 500, 250, 550, 350, 400 };
+    static final int[] SHOP_COSTS = { 500, 150, 280, 500, 250, 550, 350, 400, 420, 200, 1200 };
     // 3 large cards centered in a single row
     private static final int SC_W = 172, SC_H = 150, SC_GAP = 18;
     private static final int SC_Y = 210;
@@ -145,7 +160,16 @@ public class BulletHellGame extends JPanel
     private boolean shopRapidFire = false;
     private boolean shopBulletTime = false;
     private boolean shopScoreRush = false;
-    private boolean shopPhaseShift = false; // brief invincibility frames on hit
+    private boolean shopPhaseShift = false;
+private int ghostWalkTimer = 0;
+private int bulletTimeTimer = 0;
+private boolean hasSingularity = false;
+private boolean voidMagnetReady = false;
+private boolean voidMagnetActive = false;
+private int voidMagnetTimer = 0;
+private boolean shopEchoShot = false;
+private int echoShotCD = 0;
+private boolean hasDeathMark = false;
     private int powerUpDropCD = 0;
     private int sceneTransAlpha = 0;
     private final int[] s1x = new int[60], s1y = new int[60], s1b = new int[60];
@@ -234,9 +258,11 @@ public class BulletHellGame extends JPanel
 
     // PowerUp timers
     private boolean hasShield = false;
-    private int shieldTimer = 0;
-    private boolean doubleShot = false;
-    private int doubleShotTimer = 0;
+    private boolean doubleShot = false;  // ← add this line
+   private int shieldTimer = 0;
+   private int doubleShotTimer = 0;
+   private int speedBoostTimer = 0;
+
 
     private String pickupMsg = "";
     private int pickupTimer = 0;
@@ -313,6 +339,23 @@ public class BulletHellGame extends JPanel
         addKeyListener(this);
         addMouseListener(this);
         addMouseMotionListener(this);
+        // Clamp cursor inside game window
+        addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(java.awt.event.MouseEvent e) { clampCursor(e); }
+            @Override
+            public void mouseDragged(java.awt.event.MouseEvent e) { clampCursor(e); }
+            private void clampCursor(java.awt.event.MouseEvent e) {
+                try {
+                    java.awt.Point loc = getLocationOnScreen();
+                    int ax = loc.x + e.getX(), ay = loc.y + e.getY();
+                    int cx = Math.max(loc.x, Math.min(ax, loc.x + WIDTH - 1));
+                    int cy = Math.max(loc.y, Math.min(ay, loc.y + HEIGHT - 1));
+                    if (cx != ax || cy != ay)
+                        new java.awt.Robot().mouseMove(cx, cy);
+                } catch (Exception ex) {}
+            }
+        });
         Random sr = new Random(7777);
         for (int i = 0; i < starX.length; i++) {
             starX[i] = sr.nextInt(WIDTH);
@@ -562,14 +605,33 @@ public class BulletHellGame extends JPanel
 
         if (shieldTimer > 0 && --shieldTimer == 0)
             hasShield = false;
+        // Echo Shot: spawn delayed copy of last player bullet direction
+        if (shopEchoShot && echoShotCD == 18 && !playerBullets.isEmpty()) {
+            Bullet last = playerBullets.get(playerBullets.size() - 1);
+            Bullet echo = new Bullet(last.x + 10, last.y, last.dx * 0.75, last.dy * 0.75,
+                    new Color(255, 100, 200, 180), false);
+            playerBullets.add(echo);
+            echoShotCD = 0;
+        }
+        if (shopEchoShot && firingThisFrame && echoShotCD == 0) echoShotCD = 18;
+        if (ghostWalkTimer > 0 && --ghostWalkTimer == 0)
+            shopPhaseShift = false;
+        if (bulletTimeTimer > 0 && --bulletTimeTimer == 0)
+            shopBulletTime = false;
+        if (voidMagnetTimer > 0 && --voidMagnetTimer == 0)
+            voidMagnetActive = false;
+        if (echoShotCD > 0) echoShotCD--;
         if (doubleShotTimer > 0 && --doubleShotTimer == 0)
             doubleShot = false;
+        if (speedBoostTimer == 300) spd = Math.min(spd + 3, 10);
+if (speedBoostTimer > 0) speedBoostTimer--;
+if (speedBoostTimer == 0 && spd > 5) spd = 5;
         if (pickupTimer > 0)
             pickupTimer--;
 
         if (frameCount % 360 == 0 && !bossTransition) {
             int type = (frameCount / 360) % PU_COUNT;
-            boolean already = (type == PU_DOUBLE_SHOT && doubleShot) || (type == PU_SHIELD && hasShield);
+            boolean already = (type == PU_DOUBLE_SHOT && doubleShot) || (type == PU_SHIELD && hasShield) || (type == PU_SPEED_BOOST && speedBoostTimer > 0);
             if (!already)
                 powerUps.add(new PowerUp(rand.nextInt(WIDTH - 80) + 40, -60, type));
         }
@@ -653,11 +715,31 @@ public class BulletHellGame extends JPanel
             // Bullet Time: enemy bullets move at ~55% speed (skip update on odd frames)
             if (!shopBulletTime || frameCount % 2 == 0)
                 b.update();
+            // Void Magnet: push bullets away from player
+            if (voidMagnetActive) {
+                double bx = b.x - (player.x + player.size / 2.0);
+                double by = b.y - (player.y + player.size / 2.0);
+                double dist = Math.sqrt(bx * bx + by * by);
+                if (dist < 200 && dist > 0) {
+                    b.dx += (bx / dist) * 1.2;
+                    b.dy += (by / dist) * 1.2;
+                }
+            }
             if (b.y > HEIGHT + 10 || b.x < -10 || b.x > WIDTH + 10) {
                 enemyBullets.remove(i);
                 continue;
             }
             if (player.alive && !phantomInvinc && player.getHitbox().intersects(b.getBounds())) {
+                if (hasDeathMark && boss.alive) {
+                    hasDeathMark = false;
+                    boss.hp = 0;
+                    boss.alive = false;
+                    enemyBullets.remove(i);
+                    bossDefeated();
+                    pickupMsg = "DEATH MARK TRIGGERED!";
+                    pickupTimer = 90;
+                    break;
+                }
                 if (shopPhaseShift) {
                     enemyBullets.remove(i);
                     continue;
@@ -864,22 +946,33 @@ public class BulletHellGame extends JPanel
                 break;
             case SHOP_BULLET_TIME:
                 shopBulletTime = true;
-                pickupMsg = "CLOCK FRACTURE — SLOW BULLETS!";
+                bulletTimeTimer = 600;
+                pickupMsg = "CLOCK FRACTURE — SLOW BULLETS! (10s)";
                 break;
             case SHOP_SCORE_RUSH:
                 shopScoreRush = true;
                 pickupMsg = "GOLD RUSH — 2x SCORE!";
                 break;
-            case SHOP_PHASE_SHIFT:
+           case SHOP_PHASE_SHIFT:
                 shopPhaseShift = true;
-                pickupMsg = "GHOST WALK — INVINCIBILITY!";
+                ghostWalkTimer = 300;
+                pickupMsg = "GHOST WALK \n 5s INVINCIBILITY!";
                 break;
             case SHOP_NUKE:
-                enemyBullets.clear();
-                score += 80;
-                shakeTimer = 16;
-                shakeIntensity = 5;
-                pickupMsg = "SINGULARITY — BULLETS ERASED!";
+                hasSingularity = true;
+                pickupMsg = "SINGULARITY READY! \n PRESS E TO USE!";
+                break;
+            case SHOP_VOID_MAGNET:
+                voidMagnetReady = true;
+                pickupMsg = "VOID MAGNET READY! [Q] TO USE";
+                break;
+            case SHOP_ECHO_SHOT:
+                shopEchoShot = true;
+                pickupMsg = "ECHO SHOT — GHOST BULLETS!";
+                break;
+            case SHOP_DEATH_MARK:
+                hasDeathMark = true;
+                pickupMsg = "DEATH MARK — ONE HIT KILLS BOSS!";
                 break;
             case SHOP_REPAIR:
                 int maxLives = new int[] { 5, 3, 2 }[difficulty];
@@ -1110,6 +1203,7 @@ public class BulletHellGame extends JPanel
                 bvy = (dy / len) * 7;
             }
             snakes.add(new Snake(pcx, pcy, bvx, bvy));
+if (doubleShot) snakes.add(new Snake(pcx, pcy, bvx * 0.85, bvy * 0.85));
             viperFireCD = rate;
             if (soundCooldown == 0) {
                 playSpacegunSound();
@@ -1303,13 +1397,26 @@ public class BulletHellGame extends JPanel
         switch (type) {
             case PU_DOUBLE_SHOT:
                 doubleShot = true;
-                doubleShotTimer = 480;
+                doubleShotTimer = 600;
                 pickupMsg = "DOUBLE SHOT!";
                 break;
             case PU_SHIELD:
                 hasShield = true;
                 shieldTimer = 600;
                 pickupMsg = "SHIELD ON!";
+                break;
+            case PU_SPEED_BOOST:
+                speedBoostTimer = 300;
+                pickupMsg = "SPEED BOOST!";
+                break;
+            case PU_SCORE_BURST:
+                score += 500;
+                pickupMsg = "+500 SCORE BURST!";
+                break;
+            case PU_HEAL:
+                int maxLives = new int[]{5, 3, 2}[difficulty];
+                if (player.lives < maxLives) { player.lives++; pickupMsg = "HEAL +1 LIFE!"; }
+                else { pickupMsg = "ALREADY FULL HP!"; }
                 break;
         }
         pickupTimer = 120;
@@ -1865,6 +1972,9 @@ public class BulletHellGame extends JPanel
             new Color(160, 0, 255), // 5 GHOST WALK – violet
             new Color(255, 60, 60), // 6 SINGULARITY – red
             new Color(200, 80, 255), // 7 NANO MEND – purple
+            new Color(0, 180, 255), // 8 VOID MAGNET – cyan
+            new Color(255, 100, 180), // 9 ECHO SHOT – pink
+            new Color(255, 30, 30), // 10 DEATH MARK – crimson
     };
 
     private void drawShop(Graphics2D g2) {
@@ -1918,7 +2028,7 @@ public class BulletHellGame extends JPanel
         // Hint
         g2.setFont(new Font("Arial", Font.PLAIN, 11));
         g2.setColor(new Color(90, 80, 130));
-        String hint = "All upgrades are PERMANENT — they last until game over";
+        String hint = "Most upgrades are PERMANENT — ⏱ marked ones are timed";
         g2.drawString(hint, WIDTH / 2 - g2.getFontMetrics().stringWidth(hint) / 2, 138);
 
         // ── 3 Item Cards ──────────────────────────────────────────────
@@ -1968,7 +2078,8 @@ public class BulletHellGame extends JPanel
             g2.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), bought ? 60 : 130));
             g2.fillRoundRect(rx + cardW / 2 - 30, cardY + 96, 60, 13, 5, 5);
             g2.setColor(new Color(6, 4, 18));
-            g2.drawString("★ PERMANENT ★", rx + cardW / 2 - g2.getFontMetrics().stringWidth("★ PERMANENT ★") / 2,
+            String permLabel = (idx == SHOP_BULLET_TIME || idx == SHOP_PHASE_SHIFT) ? "⏱ TEMPORARY" : "★ PERMANENT ★";
+                g2.drawString(permLabel, rx + cardW / 2 - g2.getFontMetrics().stringWidth(permLabel) / 2,
                     cardY + 106);
 
             // Item name
@@ -1982,7 +2093,8 @@ public class BulletHellGame extends JPanel
             g2.setColor(bought ? new Color(50, 130, 50)
                     : canAfford ? new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), 220) : new Color(65, 63, 85));
             FontMetrics dfm = g2.getFontMetrics();
-            g2.drawString(SHOP_DESCS[idx], rx + cardW / 2 - dfm.stringWidth(SHOP_DESCS[idx]) / 2, cardY + 140);
+            int descW = dfm.stringWidth(SHOP_DESCS[idx]);
+            g2.drawString(SHOP_DESCS[idx], rx + (cardW - descW) / 2, cardY + 140);
 
             // Flavor text (word-wrapped)
             g2.setFont(new Font("Arial", Font.ITALIC, 9));
@@ -2195,6 +2307,41 @@ public class BulletHellGame extends JPanel
                 g2.setColor(cw);
                 g2.drawRect(cx - 3, cy - 12, 6, 24);
                 g2.drawRect(cx - 12, cy - 3, 24, 6);
+                break;
+            }
+            case SHOP_VOID_MAGNET: { // magnet shape
+                g2.setColor(c);
+                g2.setStroke(new BasicStroke(4f));
+                g2.drawArc(cx - 11, cy - 12, 22, 22, 0, 180);
+                g2.setStroke(new BasicStroke(4f));
+                g2.drawLine(cx - 11, cy + 2, cx - 11, cy + 10);
+                g2.drawLine(cx + 11, cy + 2, cx + 11, cy + 10);
+                g2.setColor(new Color(255, 80, 80, a));
+                g2.setStroke(new BasicStroke(4f));
+                g2.drawLine(cx - 11, cy + 7, cx - 11, cy + 11);
+                g2.setColor(new Color(80, 80, 255, a));
+                g2.drawLine(cx + 11, cy + 7, cx + 11, cy + 11);
+                break;
+            }
+            case SHOP_ECHO_SHOT: { // two offset bullets
+                for (int i = 0; i < 2; i++) {
+                    int ox = i == 0 ? -6 : 6, oy = i == 0 ? -4 : 4;
+                    int ba = i == 0 ? a : a / 2;
+                    g2.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), ba));
+                    g2.fillRoundRect(cx + ox - 3, cy + oy - 10, 6, 14, 3, 3);
+                    g2.setColor(new Color(255, 255, 255, ba));
+                    g2.drawRoundRect(cx + ox - 3, cy + oy - 10, 6, 14, 3, 3);
+                }
+                break;
+            }
+            case SHOP_DEATH_MARK: { // skull-like X mark
+                g2.setColor(c);
+                g2.setStroke(new BasicStroke(3.5f));
+                g2.drawLine(cx - 10, cy - 10, cx + 10, cy + 10);
+                g2.drawLine(cx + 10, cy - 10, cx - 10, cy + 10);
+                g2.setColor(cw);
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawOval(cx - 13, cy - 13, 26, 26);
                 break;
             }
         }
@@ -3092,10 +3239,26 @@ public class BulletHellGame extends JPanel
         String[] diffLabels = { "EASY", "NORMAL", "HARD" };
         g2.setFont(new Font("Arial", Font.PLAIN, 10));
         g2.setColor(new Color(120, 120, 180));
-        g2.drawString("BEST (" + diffLabels[difficulty] + ")", WIDTH - 100, 38);
+        if (hasSingularity) {
+            g2.setFont(new Font("Arial", Font.BOLD, 11));
+            g2.setColor(new Color(255, 80, 80, (int)(180 + 75 * Math.abs(Math.sin(frameCount * 0.08)))));
+            g2.drawString("SINGULARITY READY", WIDTH - 145, HEIGHT - 70);
+            g2.setFont(new Font("Arial", Font.PLAIN, 9));
+            g2.setColor(new Color(200, 200, 200));
+            g2.drawString("PRESS E TO USE", WIDTH - 130, HEIGHT - 56);
+        }
+        g2.setFont(new Font("Arial", Font.PLAIN, 9));
+        g2.setColor(new Color(120, 120, 160));
+        g2.drawString("BEST:", WIDTH - 100, 40);
         g2.setFont(new Font("Courier New", Font.BOLD, 13));
         g2.setColor(score >= highScores[difficulty] ? new Color(255, 220, 60) : new Color(160, 160, 210));
-        g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 52);
+        g2.drawString(String.valueOf(highScores[difficulty]), WIDTH - 100, 55);
+        g2.setFont(new Font("Arial", Font.PLAIN, 9));
+        g2.setColor(new Color(120, 120, 160));
+        g2.drawString("WAVE:", WIDTH - 100, 68);
+        g2.setFont(new Font("Courier New", Font.BOLD, 13));
+        g2.setColor(new Color(200, 220, 255));
+        g2.drawString(String.valueOf(wave), WIDTH - 100, 81);
         if (wave % 5 == 0) {
             g2.setFont(new Font("Arial", Font.BOLD, 11));
             g2.setColor(new Color(255, 60, 60, (int) (180 + 70 * Math.abs(Math.sin(frameCount * 0.12)))));
@@ -3215,11 +3378,19 @@ public class BulletHellGame extends JPanel
         if (shopRapidFire)
             px = drawHudIcon(g2, px, py, "RF*", SHOP_ACCENT[2], 1f, true);
         if (shopBulletTime)
-            px = drawHudIcon(g2, px, py, "BT*", SHOP_ACCENT[3], 1f, true);
+            px = drawHudIcon(g2, px, py, "BT*", SHOP_ACCENT[3], (float) bulletTimeTimer / 600f, false);
         if (shopScoreRush)
             px = drawHudIcon(g2, px, py, "SR*", SHOP_ACCENT[4], 1f, true);
         if (shopPhaseShift)
-            px = drawHudIcon(g2, px, py, "PS*", SHOP_ACCENT[5], 1f, true);
+            px = drawHudIcon(g2, px, py, "PS*", SHOP_ACCENT[5], (float) ghostWalkTimer / 300f, false);
+        if (voidMagnetReady)
+            px = drawHudIcon(g2, px, py, "VM", SHOP_ACCENT[8], 1f, false);
+        if (voidMagnetActive)
+            px = drawHudIcon(g2, px, py, "VM!", SHOP_ACCENT[8], (float) voidMagnetTimer / 480f, false);
+        if (shopEchoShot)
+            px = drawHudIcon(g2, px, py, "ECH*", SHOP_ACCENT[9], 1f, true);
+        if (hasDeathMark)
+            px = drawHudIcon(g2, px, py, "DM", SHOP_ACCENT[10], 1f, false);
     }
 
     private int drawHudIcon(Graphics2D g2, int px, int py,
@@ -3250,7 +3421,7 @@ public class BulletHellGame extends JPanel
         g2.setColor(new Color(70, 70, 110));
         g2.drawString("BOSS DROP (timed): SH · 2x", lx, ly);
         g2.setColor(new Color(90, 160, 120));
-        g2.drawString("SHOP (★ = permanent): SPD RF BT SR PS", lx, ly + 12);
+        g2.drawString("SHOP: SPD RF BT SR PS ECH★  |  [Q]VM  [E]SNG  DM", lx, ly + 12);
     }
 
     private void drawPause(Graphics2D g2) {
@@ -3750,8 +3921,15 @@ public class BulletHellGame extends JPanel
         shopSpeedBoost = false;
         shopRapidFire = false;
         shopBulletTime = false;
+        bulletTimeTimer = 0;
         shopScoreRush = false;
         shopPhaseShift = false;
+        voidMagnetReady = false;
+        voidMagnetActive = false;
+        voidMagnetTimer = 0;
+        shopEchoShot = false;
+        echoShotCD = 0;
+        hasDeathMark = false;
         powerUpDropCD = 0;
         for (int i = 0; i < SHOP_OFFERED; i++)
             shopBought[i] = false;
@@ -3788,6 +3966,23 @@ public class BulletHellGame extends JPanel
                 gameState = STATE_MENU;
             }
         }
+       if (gameState == STATE_PLAYING && e.getKeyCode() == KeyEvent.VK_Q) {
+            if (voidMagnetReady) {
+                voidMagnetReady = false;
+                voidMagnetActive = true;
+                voidMagnetTimer = 480;
+                pickupMsg = "VOID MAGNET ACTIVE!";
+                pickupTimer = 90;
+            }
+        }
+        if (gameState == STATE_PLAYING && e.getKeyCode() == KeyEvent.VK_E) {
+            if (hasSingularity) {
+                hasSingularity = false;
+                enemyBullets.clear();
+                pickupMsg = "SINGULARITY — BULLETS CLEARED!";
+                pickupTimer = 90;
+            }
+        }
         if (gameState == STATE_PLAYING && e.getKeyCode() == KeyEvent.VK_ESCAPE) {
             gameState = STATE_PAUSE;
         } else if (gameState == STATE_PAUSE && e.getKeyCode() == KeyEvent.VK_ESCAPE) {
@@ -3804,8 +3999,8 @@ public class BulletHellGame extends JPanel
             startGame();
         if (gameState == STATE_SHOP && e.getKeyCode() == KeyEvent.VK_ENTER)
             leaveShop();
-    }
-
+            }
+        
     @Override
     public void keyReleased(KeyEvent e) {
         if (e.getKeyCode() < 256)
@@ -4000,6 +4195,7 @@ public class BulletHellGame extends JPanel
                 return "?";
         }
     }
+
 
     static String puFullName(int type) {
         switch (type) {
