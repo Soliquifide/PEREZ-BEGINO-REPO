@@ -683,7 +683,7 @@ public class BulletHellGame extends JPanel
                         player.x + player.size / 2.0,
                         player.y + player.size / 2.0,
                         Math.cos(ang) * 12.0, Math.sin(ang) * 12.0));
-                rocketCooldown = 120;
+                rocketCooldown = 18;
                 playSpacegunSound();
             }
             // Last breath at 2:30 — drain remaining HP fast
@@ -828,13 +828,13 @@ public class BulletHellGame extends JPanel
             }
             if (!bossTransition && boss.alive && boss.getBounds().intersects(b.getBounds())) {
                 playerBullets.remove(i);
-                double rocketDmg = (b instanceof RocketBullet) ? boss.maxHp / 200 : 1;
+                double rocketDmg = (b instanceof RocketBullet) ? boss.maxHp / 1000 : 1;
                 boss.hp -= rocketDmg;
                 score += (shopScoreRush ? 20 : 10);
                 damageIndicators.add(new DamageIndicator(
                         boss.x + rand.nextInt(boss.width),
                         boss.y + rand.nextInt(boss.height / 2),
-                        "-5", new Color(255, 220, 80)));
+                        "-1", new Color(255, 220, 80)));
                 // Drop a field powerup: only 1-in-60 chance AND respect cooldown
                 if (powerUpDropCD <= 0 && rand.nextInt(60) == 0) {
                     int dt = rand.nextInt(PU_COUNT);
@@ -1159,7 +1159,7 @@ public class BulletHellGame extends JPanel
                 bvy = (dy / len) * bs;
             }
             playerBullets.add(new Bullet(pcx, pcy, bvx, bvy, Color.CYAN, false));
-                heat += HEAT_PER_SHOT;
+            heat += HEAT_PER_SHOT;
             if (soundCooldown == 0) {
                 playSpacegunSound();
                 soundCooldown = FIRE_RATE;
@@ -1331,7 +1331,7 @@ public class BulletHellGame extends JPanel
                 bvy = (dy / len) * 7;
             }
             snakes.add(new Snake(pcx, pcy, bvx, bvy));
-          
+
             viperFireCD = rate;
             if (soundCooldown == 0) {
                 playSpacegunSound();
@@ -4139,7 +4139,7 @@ public class BulletHellGame extends JPanel
         novaParticles.clear();
         hasShield = false;
         shieldTimer = 0;
-       
+
         pickupMsg = "";
         pickupTimer = 0;
         shakeTimer = 0;
@@ -4426,7 +4426,7 @@ public class BulletHellGame extends JPanel
     // =================================================================
     static Color puColor(int type) {
         switch (type) {
-            
+
             case PU_SHIELD:
                 return new Color(80, 120, 255);
             case PU_SPEED_BOOST:
@@ -4442,7 +4442,7 @@ public class BulletHellGame extends JPanel
 
     static String puLabel(int type) {
         switch (type) {
-        
+
             case PU_SHIELD:
                 return "SH";
             case PU_SPEED_BOOST:
@@ -4458,7 +4458,7 @@ public class BulletHellGame extends JPanel
 
     static String puFullName(int type) {
         switch (type) {
-       
+
             case PU_SHIELD:
                 return "SHIELD";
             default:
@@ -4550,7 +4550,7 @@ public class BulletHellGame extends JPanel
             this.y = (int) by;
             this.waveNum = wave;
             this.isApex = (wave % 5 == 0 && wave != 10);
-            maxHp = hp = isApex ? (10 + wave * 20) * 1.1 : (waveNum == 10 ? 1000 : Math.min(125, 10 + wave * 20));
+            maxHp = hp = isApex ? (10 + wave * 20) * 1.1 : (waveNum == 10 ? 3000 : Math.min(125, 10 + wave * 20));
             laserInterval = isApex ? Math.max(120, 260 - wave * 8) : 999999;
             laserCooldown = isApex ? laserInterval / 2 : 999999;
         }
