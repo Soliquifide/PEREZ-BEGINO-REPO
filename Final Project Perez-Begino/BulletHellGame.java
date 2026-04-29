@@ -1,5 +1,5 @@
 import javax.swing.*;
-import javax.sound.midi.*;
+
 import javax.sound.sampled.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -167,8 +167,7 @@ public class BulletHellGame extends JPanel
     private boolean voidMagnetReady = false;
     private boolean voidMagnetActive = false;
     private int voidMagnetTimer = 0;
-    private boolean shopEchoShot = false;
-    private int echoShotCD = 0;
+    // echo shot removed
     private boolean hasDeathMark = false;
     private int powerUpDropCD = 0;
     private int sceneTransAlpha = 0;
@@ -274,10 +273,6 @@ public class BulletHellGame extends JPanel
     private final ArrayList<PowerUp> powerUps = new ArrayList<>();
     private final Random rand = new Random();
 
-    // MIDI
-    private Sequencer sequencer;
-    private Synthesizer synth;
-
     // Stars
     private final int[] starX = new int[120];
     private final int[] starY = new int[120];
@@ -291,6 +286,7 @@ public class BulletHellGame extends JPanel
 
     // Sound
     private SourceDataLine soundLine;
+    private SourceDataLine kitsuneSoundLine;
     private int soundCooldown = 0;
 
     // Buttons
@@ -387,6 +383,9 @@ public class BulletHellGame extends JPanel
             soundLine = (SourceDataLine) AudioSystem.getLine(info);
             soundLine.open(fmt, 4096);
             soundLine.start();
+            kitsuneSoundLine = (SourceDataLine) AudioSystem.getLine(info);
+            kitsuneSoundLine.open(fmt, 4096);
+            kitsuneSoundLine.start();
         } catch (Exception ex) {
             System.err.println("Sound init failed: " + ex.getMessage());
         }
@@ -460,97 +459,154 @@ public class BulletHellGame extends JPanel
         }, "sfx-boss-laser").start();
     }
 
+    private void playKitsuneSweepSound() {
+        if (soundLine == null)
+            return;
+        new Thread(() -> {
+            try {
+                int sr = 44100, samples = sr * 220 / 1000;
+                byte[] buf = new byte[samples * 2];
+                for (int i = 0; i < samples; i++) {
+                    double t = (double) i / sr;
+                    double freq = 500 + 300 * Math.exp(-t * 8);
+                    double tone = Math.sin(2 * Math.PI * freq * t) * 0.35
+                            + Math.sin(2 * Math.PI * freq * 1.8 * t) * 0.15;
+                    double whoosh = (Math.random() * 2 - 1) * 0.2 * Math.exp(-t * 5);
+                    double env = Math.exp(-t * 7) * Math.min(1.0, t * 30);
+                    short v = (short) Math.max(-32768, Math.min(32767,
+                            (int) ((tone + whoosh) * env * 14000)));
+                    buf[i * 2] = (byte) (v & 0xFF);
+                    buf[i * 2 + 1] = (byte) ((v >> 8) & 0xFF);
+                }
+                kitsuneSoundLine.write(buf, 0, buf.length);
+            } catch (Exception ignored) {
+            }
+        }, "sfx-kitsune-sweep").start();
+    }
+
     // ── MIDI ──────────────────────────────────────────────────────────
+    private Clip[] musicClips = new Clip[4];
+    // 0 = waves 1-4, 1 = apex (wave 5,15,20...), 2 = waves 6-9, 3 = kitsune wave 10
+    private int currentTrack = -1;
+    private float fadeVolume = 1.0f;
+    private boolean fadingOut = false;
+    private boolean fadingIn = false;
+    private int nextTrack = -1;
+    private static final int FADE_STEPS = 60; // ~1 second at 60fps
+    private int fadeStep = 0;
+
     private void initMusic() {
+        String[] files = { "/music1.wav", "/music2.wav", "/music3.wav", "/music4.wav" };
+        for (int i = 0; i < 4; i++) {
+            try {
+                java.io.InputStream is = getClass().getResourceAsStream(files[i]);
+                if (is == null) {
+                    System.err.println("Missing: " + files[i]);
+                    continue;
+                }
+                AudioInputStream ais = AudioSystem.getAudioInputStream(
+                        new java.io.BufferedInputStream(is));
+                musicClips[i] = AudioSystem.getClip();
+                musicClips[i].open(ais);
+            } catch (Exception ex) {
+                System.err.println("Music load failed [" + i + "]: " + ex.getMessage());
+            }
+        }
+        if (musicEnabled)
+            switchToTrack(0, false);
+    }
+
+    private int getTrackForWave(int wave) {
+        if (wave == 10)
+            return 3; // kitsune
+        if (wave % 5 == 0)
+            return 1; // apex boss waves (5,15,20...)
+        if (wave >= 6 && wave <= 9)
+            return 2; // japan waves
+        if (wave > 10)
+            return 0; // endless repeats track 0
+        return 0; // waves 1-4
+    }
+
+    private void switchToTrack(int track, boolean fade) {
+        if (track == currentTrack)
+            return;
+        if (!musicEnabled) {
+            currentTrack = track;
+            return;
+        }
+        if (fade) {
+            fadingOut = true;
+            fadingIn = false;
+            nextTrack = track;
+            fadeStep = 0;
+        } else {
+            stopAllClips();
+            currentTrack = track;
+            if (musicClips[track] != null) {
+                musicClips[track].setFramePosition(0);
+                setClipVolume(musicClips[track], musicVolPct / 100f);
+                musicClips[track].loop(Clip.LOOP_CONTINUOUSLY);
+                musicClips[track].start();
+            }
+            fadeVolume = 1.0f;
+            fadingOut = false;
+            fadingIn = false;
+        }
+    }
+
+    private void stopAllClips() {
+        for (Clip c : musicClips)
+            if (c != null && c.isRunning())
+                c.stop();
+    }
+
+    private void setClipVolume(Clip clip, float vol) {
         try {
-            synth = MidiSystem.getSynthesizer();
-            synth.open();
-            sequencer = MidiSystem.getSequencer(false);
-            sequencer.open();
-            sequencer.getTransmitter().setReceiver(synth.getReceiver());
-            sequencer.setSequence(buildSequence());
-            sequencer.setLoopCount(Sequencer.LOOP_CONTINUOUSLY);
-            applyMusicVolume();
-            if (musicEnabled)
-                sequencer.start();
-        } catch (Exception ex) {
-            System.err.println("MIDI init failed: " + ex.getMessage());
+            javax.sound.sampled.FloatControl fc = (javax.sound.sampled.FloatControl) clip
+                    .getControl(javax.sound.sampled.FloatControl.Type.MASTER_GAIN);
+            float dB = (float) (Math.log10(Math.max(0.0001, vol * (musicVolPct / 100f))) * 20.0);
+            fc.setValue(Math.max(fc.getMinimum(), Math.min(fc.getMaximum(), dB)));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void updateMusicFade() {
+        if (!fadingOut && !fadingIn)
+            return;
+        fadeStep++;
+        if (fadingOut) {
+            fadeVolume = 1.0f - (float) fadeStep / FADE_STEPS;
+            if (musicClips[currentTrack] != null)
+                setClipVolume(musicClips[currentTrack], Math.max(0, fadeVolume));
+            if (fadeStep >= FADE_STEPS) {
+                stopAllClips();
+                fadingOut = false;
+                fadingIn = true;
+                fadeStep = 0;
+                currentTrack = nextTrack;
+                if (musicClips[currentTrack] != null) {
+                    musicClips[currentTrack].setFramePosition(0);
+                    setClipVolume(musicClips[currentTrack], 0f);
+                    musicClips[currentTrack].loop(Clip.LOOP_CONTINUOUSLY);
+                    musicClips[currentTrack].start();
+                }
+            }
+        } else if (fadingIn) {
+            fadeVolume = (float) fadeStep / FADE_STEPS;
+            if (musicClips[currentTrack] != null)
+                setClipVolume(musicClips[currentTrack], Math.min(1f, fadeVolume));
+            if (fadeStep >= FADE_STEPS) {
+                fadingIn = false;
+                fadeVolume = 1.0f;
+            }
         }
     }
 
     private void applyMusicVolume() {
-        if (synth == null)
-            return;
-        int v = (int) (musicVolPct / 100.0 * 127);
-        for (MidiChannel ch : synth.getChannels())
-            if (ch != null)
-                ch.controlChange(7, v);
-    }
-
-    private Sequence buildSequence() throws InvalidMidiDataException {
-        Sequence seq = new Sequence(Sequence.PPQ, 24);
-        int us = 400_000;
-        Track tt = seq.createTrack();
-        MetaMessage mm = new MetaMessage();
-        mm.setMessage(0x51, new byte[] { (byte) (us >> 16), (byte) (us >> 8), (byte) us }, 3);
-        tt.add(new MidiEvent(mm, 0));
-        Track lead = seq.createTrack();
-        programChange(lead, 0, 80, 0);
-        int[] mel = { 72, 74, 76, 79, 79, 76, 74, 72, 74, 76, 77, 81, 79, 77, 76, 74, 72, 76, 79, 84, 83, 81, 79, 77,
-                76, 74, 72, 71, 72, 0, 0, 0 };
-        int[] mDur = { 12, 12, 12, 18, 6, 12, 12, 12, 12, 12, 12, 18, 6, 12, 12, 12, 12, 12, 12, 18, 6, 12, 12, 12, 12,
-                12, 12, 12, 24, 24, 24, 24 };
-        for (int rep = 0; rep < 8; rep++) {
-            long t = rep * 480L;
-            for (int i = 0; i < mel.length; i++) {
-                if (mel[i] > 0)
-                    note(lead, 0, mel[i], 90, t, mDur[i] - 2);
-                t += mDur[i];
-            }
-        }
-        Track harm = seq.createTrack();
-        programChange(harm, 1, 80, 0);
-        int[] hm = { 60, 62, 64, 67, 67, 64, 62, 60, 62, 64, 65, 69, 67, 65, 64, 62, 60, 64, 67, 72, 71, 69, 67, 65, 64,
-                62, 60, 59, 60, 0, 0, 0 };
-        for (int rep = 0; rep < 8; rep++) {
-            long t = rep * 480L;
-            for (int i = 0; i < hm.length; i++) {
-                if (hm[i] > 0)
-                    note(harm, 1, hm[i], 58, t, mDur[i] - 2);
-                t += mDur[i];
-            }
-        }
-        Track bass = seq.createTrack();
-        programChange(bass, 2, 38, 0);
-        int[] roots = { 48, 50, 48, 53 }, fifths = { 55, 57, 55, 60 };
-        for (int rep = 0; rep < 16; rep++) {
-            int r = roots[rep % 4], f = fifths[rep % 4];
-            long b = rep * 96L;
-            note(bass, 2, r, 105, b, 20);
-            note(bass, 2, r, 85, b + 24, 10);
-            note(bass, 2, f, 100, b + 48, 20);
-            note(bass, 2, r, 80, b + 72, 10);
-        }
-        Track drums = seq.createTrack();
-        for (int bar = 0; bar < 24; bar++) {
-            long b = bar * 96L;
-            note(drums, 9, 36, 110, b, 6);
-            note(drums, 9, 36, 95, b + 48, 6);
-            note(drums, 9, 40, 100, b + 24, 5);
-            note(drums, 9, 40, 100, b + 72, 5);
-            for (int h = 0; h < 8; h++)
-                note(drums, 9, 42, 55, b + h * 12, 4);
-        }
-        return seq;
-    }
-
-    private void note(Track t, int ch, int p, int v, long tick, int dur) throws InvalidMidiDataException {
-        t.add(new MidiEvent(new ShortMessage(ShortMessage.NOTE_ON, ch, p, v), tick));
-        t.add(new MidiEvent(new ShortMessage(ShortMessage.NOTE_OFF, ch, p, 0), tick + dur));
-    }
-
-    private void programChange(Track t, int ch, int prog, long tick) throws InvalidMidiDataException {
-        t.add(new MidiEvent(new ShortMessage(ShortMessage.PROGRAM_CHANGE, ch, prog, 0), tick));
+        for (Clip c : musicClips)
+            if (c != null && c.isRunning())
+                setClipVolume(c, fadeVolume);
     }
 
     // =================================================================
@@ -569,6 +625,10 @@ public class BulletHellGame extends JPanel
             shakeTimer--;
         if (soundCooldown > 0)
             soundCooldown--;
+        updateMusicFade();
+        int wantedTrack = getTrackForWave(wave);
+        if (wantedTrack != currentTrack && !fadingOut)
+            switchToTrack(wantedTrack, true);
 
         boolean wantsFire = (fireMode == FIRE_SPACE && keys[KeyEvent.VK_SPACE])
                 || (fireMode == FIRE_MOUSE && mouseFireHeld);
@@ -619,8 +679,7 @@ public class BulletHellGame extends JPanel
             shopBulletTime = false;
         if (voidMagnetTimer > 0 && --voidMagnetTimer == 0)
             voidMagnetActive = false;
-        if (echoShotCD > 0)
-            echoShotCD--;
+
         if (doubleShotTimer > 0 && --doubleShotTimer == 0)
             doubleShot = false;
         if (speedBoostTimer > 0 && --speedBoostTimer == 0)
@@ -1283,7 +1342,10 @@ public class BulletHellGame extends JPanel
                 }
             }
         } else if (wave <= 9) {
-            if (frameCount % 55 == 0) {
+            // Spirit lances — fast aimed shots that decelerate
+            // Spirit lances — fast aimed shots that decelerate
+            // Spirit lances — fast aimed shots that decelerate
+            if (frameCount % 37 == 0) {
                 int ring = (frameCount / 55) % 3;
                 int cnt = 7 + ring * 1;
                 double rot = Math.toRadians(ring * 20 + frameCount * 0.5);
@@ -1317,7 +1379,9 @@ public class BulletHellGame extends JPanel
                 }
             }
             // Spirit lances — fast aimed shots that decelerate
-            if (frameCount % 55 == 0) {
+            // Spirit lances — fast aimed shots that decelerate
+
+            if (frameCount % 30 == 0) {
                 double dx = player.x - cx, dy2 = player.y - cy;
                 double len = Math.sqrt(dx * dx + dy2 * dy2);
                 if (len > 0) {
@@ -1331,10 +1395,12 @@ public class BulletHellGame extends JPanel
                                     Math.cos(base + offset), Math.sin(base + offset)));
                         }
                     }
+
                 }
             }
             // Tail sweep — light red bullets
-            if (frameCount % 140 == 0) {
+            // Tail sweep — light red bullets
+            if (frameCount % 83 == 0) {
                 for (int tail = 0; tail < 3; tail++) {
                     double sweepBase = Math.toRadians(30 + tail * 60);
                     for (int s = 0; s < 6; s++) {
@@ -1343,6 +1409,7 @@ public class BulletHellGame extends JPanel
                                 Math.cos(a), Math.sin(a)));
                     }
                 }
+                playKitsuneSweepSound();
             }
         }
         // Wave 11+: dense symmetric mandala + rotating cross + aimed 5-way spread
@@ -3936,8 +4003,7 @@ public class BulletHellGame extends JPanel
         voidMagnetReady = false;
         voidMagnetActive = false;
         voidMagnetTimer = 0;
-        shopEchoShot = false;
-        echoShotCD = 0;
+
         hasDeathMark = false;
         powerUpDropCD = 0;
         for (int i = 0; i < SHOP_OFFERED; i++)
@@ -4051,11 +4117,10 @@ public class BulletHellGame extends JPanel
                 fireMode = FIRE_SPACE;
             else if (btnMusicToggle.contains(p)) {
                 musicEnabled = !musicEnabled;
-                if (sequencer != null) {
-                    if (musicEnabled)
-                        sequencer.start();
-                    else
-                        sequencer.stop();
+                if (musicEnabled) {
+                    switchToTrack(currentTrack == -1 ? 0 : currentTrack, false);
+                } else {
+                    stopAllClips();
                 }
             } else if (btnSettBack.contains(p)) {
                 if (pauseInSettings) {
