@@ -60,7 +60,7 @@ A fast-paced bullet hell game where the player dodges enemy attacks and survives
 
 ## Assets
 
-- Music and sound effects sourced from Pixabay (or your source)
+- Music and sound effects sourced from Pixabay
 
 ---
 
