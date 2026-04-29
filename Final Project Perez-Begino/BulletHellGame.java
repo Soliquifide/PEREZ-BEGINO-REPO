@@ -200,6 +200,14 @@ public class BulletHellGame extends JPanel
     private final Rectangle btnEndRun = new Rectangle(WIDTH / 2 - 120, 440, 240, 54);
     private int frameCount = 0;
     private boolean bossTransition = false;
+    private int kitsuneTimerFrames = 0;
+    private static final int KITSUNE_PHASE1_END = 40 * 60; // 40
+    private static final int KITSUNE_PHASE2_END = 120 * 60; // 2:00
+    private static final int KITSUNE_PHASE3_END = 150 * 60; // 2:30 — last breath
+    private static final int KITSUNE_TOTAL = 165 * 60; // 2:45 — forced kill
+    private static final int KITSUNE_LAST_BREATH = 150 * 60; // 2:30
+
+    private int rocketCooldown = 0;
 
     // Settings
     private int fireMode = FIRE_MOUSE;
@@ -456,6 +464,30 @@ public class BulletHellGame extends JPanel
         }, "sfx-boss-laser").start();
     }
 
+    private void playFinalRocketSound() {
+        if (soundLine == null)
+            return;
+        new Thread(() -> {
+            try {
+                int sr = 44100, samples = sr * 600 / 1000;
+                byte[] buf = new byte[samples * 2];
+                for (int i = 0; i < samples; i++) {
+                    double t = (double) i / sr;
+                    double freq = 80 + 1200 * Math.min(1.0, t * 3);
+                    double roar = Math.sin(2 * Math.PI * freq * t) * 0.5
+                            + Math.sin(2 * Math.PI * freq * 2.1 * t) * 0.25
+                            + (Math.random() * 2 - 1) * 0.35;
+                    double env = Math.min(1.0, t * 8) * Math.exp(-t * 1.2);
+                    short v = (short) Math.max(-32768, Math.min(32767, (int) (roar * env * 30000)));
+                    buf[i * 2] = (byte) (v & 0xFF);
+                    buf[i * 2 + 1] = (byte) ((v >> 8) & 0xFF);
+                }
+                soundLine.write(buf, 0, buf.length);
+            } catch (Exception ignored) {
+            }
+        }, "sfx-final-rocket").start();
+    }
+
     private void playKitsuneSweepSound() {
         if (soundLine == null)
             return;
@@ -626,9 +658,70 @@ public class BulletHellGame extends JPanel
         int wantedTrack = getTrackForWave(wave);
         if (wantedTrack != currentTrack && !fadingOut)
             switchToTrack(wantedTrack, true);
+        if (wave == 10 && gameState == STATE_PLAYING && !bossTransition) {
+            kitsuneTimerFrames++;
+            if (rocketCooldown > 0)
+                rocketCooldown--;
+            // Final charge rocket at 2:40 (frame 9600)
+            boolean finalRocketFired = false;
+            if (kitsuneTimerFrames == 9600 && boss.alive && player.alive) {
+                for (int burst = 0; burst < 5; burst++) {
+                    double ang = Math.toRadians(-90 + (burst - 2) * 18);
+                    playerBullets.add(new RocketBullet(
+                            player.x + player.size / 2.0,
+                            player.y + player.size / 2.0,
+                            Math.cos(ang) * 14.0, Math.sin(ang) * 14.0));
+                }
+                playFinalRocketSound();
+                shakeTimer = 30;
+                shakeIntensity = 8;
+                pickupMsg = "FINAL BARRAGE!";
+                pickupTimer = 90;
+                finalRocketFired = true;
+            }
+            // Auto-fire rocket at boss every 2 seconds
+            if (!finalRocketFired && rocketCooldown == 0 && boss.alive && player.alive) {
+                double ang = Math.toRadians(-90 + (rand.nextDouble() - 0.5) * 20);
+                playerBullets.add(new RocketBullet(
+                        player.x + player.size / 2.0,
+                        player.y + player.size / 2.0,
+                        Math.cos(ang) * 12.0, Math.sin(ang) * 12.0));
+                rocketCooldown = 120;
+                playSpacegunSound();
+            }
+            // Last breath at 2:30 — drain remaining HP fast
+            if (kitsuneTimerFrames >= KITSUNE_LAST_BREATH && kitsuneTimerFrames < KITSUNE_TOTAL && boss.alive) {
+                double drainPerFrame = boss.maxHp / (double) (KITSUNE_TOTAL - KITSUNE_LAST_BREATH);
+                boss.hp = Math.max(0, boss.hp - drainPerFrame);
+                // Spawn dramatic death particles during drain
+                if (kitsuneTimerFrames % 4 == 0) {
+                    spawnExplosion(
+                            boss.x + rand.nextInt(boss.width),
+                            boss.y + rand.nextInt(boss.height),
+                            new Color(255, 180, 60), 6);
+                }
+                if (kitsuneTimerFrames % 8 == 0) {
+                    spawnExplosion(
+                            boss.x + boss.width / 2,
+                            boss.y + boss.height / 2,
+                            new Color(120, 255, 180), 8);
+                }
+            }
+            // Force kill at exactly 2:45
+            if (kitsuneTimerFrames >= KITSUNE_TOTAL && boss.alive) {
+                boss.hp = 0;
+                boss.alive = false;
+                // Big final death burst
+                spawnExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, new Color(255, 220, 100), 40);
+                spawnExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, new Color(200, 255, 220), 30);
+                spawnExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, Color.WHITE, 20);
+                bossDefeated();
+            }
+        }
 
-        boolean wantsFire = (fireMode == FIRE_SPACE && keys[KeyEvent.VK_SPACE])
-                || (fireMode == FIRE_MOUSE && mouseFireHeld);
+        boolean wantsFire = wave == 10 ? false
+                : (fireMode == FIRE_SPACE && keys[KeyEvent.VK_SPACE])
+                        || (fireMode == FIRE_MOUSE && mouseFireHeld);
         int baseSpd = player.speed + (shopSpeedBoost ? 2 : 0);
         int spd = baseSpd;
 
@@ -740,12 +833,13 @@ public class BulletHellGame extends JPanel
             }
             if (!bossTransition && boss.alive && boss.getBounds().intersects(b.getBounds())) {
                 playerBullets.remove(i);
-                boss.hp--;
+                double rocketDmg = (b instanceof RocketBullet) ? boss.maxHp / 200 : 1;
+                boss.hp -= rocketDmg;
                 score += (shopScoreRush ? 20 : 10);
                 damageIndicators.add(new DamageIndicator(
                         boss.x + rand.nextInt(boss.width),
                         boss.y + rand.nextInt(boss.height / 2),
-                        "-1", new Color(255, 220, 80)));
+                        "-5", new Color(255, 220, 80)));
                 // Drop a field powerup: only 1-in-60 chance AND respect cooldown
                 if (powerUpDropCD <= 0 && rand.nextInt(60) == 0) {
                     int dt = rand.nextInt(PU_COUNT);
@@ -1356,48 +1450,147 @@ public class BulletHellGame extends JPanel
         // Fires fast red lances that DECELERATE, leaving visible gaps to dodge
         // Wave 10: KITSUNE — spirit lance mechanic
         else if (wave == 10) {
-            // Fox fire ring — slow lingering orbs
-            if (frameCount % 100 == 0) {
-                int cnt = 8;
-                double rot = Math.toRadians(frameCount * 1.2);
-                for (int i = 0; i < cnt; i++) {
-                    double a = 2 * Math.PI * i / cnt + rot;
-                    enemyBullets.add(new KitsuneFoxFireBullet(cx, cy,
-                            Math.cos(a) * 1.2, Math.sin(a) * 1.2));
+            int kf = kitsuneTimerFrames;
+            // ── PHASE 1 (0:00 - 1:00): Gentle ──
+            if (kf < KITSUNE_PHASE1_END) {
+                // Slow fox fire ring only
+                if (frameCount % 160 == 0) {
+                    int cnt = 6;
+                    double rot = Math.toRadians(frameCount * 0.8);
+                    for (int i = 0; i < cnt; i++) {
+                        double a = 2 * Math.PI * i / cnt + rot;
+                        enemyBullets.add(new KitsuneFoxFireBullet(cx, cy,
+                                Math.cos(a) * 0.8, Math.sin(a) * 0.8));
+                    }
+                }
+                // Slow aimed lances, wide gaps
+                if (frameCount % 90 == 0) {
+                    double dx = player.x - cx, dy2 = player.y - cy;
+                    double len = Math.sqrt(dx * dx + dy2 * dy2);
+                    if (len > 0) {
+                        double base = Math.atan2(dy2, dx);
+                        for (int s = -1; s <= 1; s += 2) {
+                            enemyBullets.add(new KitsuneLanceBullet(cx, cy,
+                                    Math.cos(base + s * 0.5), Math.sin(base + s * 0.5)));
+                        }
+                    }
                 }
             }
-            // Spirit lances — fast aimed shots that decelerate
-            // Spirit lances — fast aimed shots that decelerate
-
-            if (frameCount % 30 == 0) {
-                double dx = player.x - cx, dy2 = player.y - cy;
-                double len = Math.sqrt(dx * dx + dy2 * dy2);
-                if (len > 0) {
-                    double base = Math.atan2(dy2, dx);
-                    int lanceCount = 5;
-                    double gapAngle = 0.30;
-                    for (int i = 0; i < lanceCount; i++) {
-                        double offset = (i - lanceCount / 2) * gapAngle;
-                        if (i % 2 == 0) {
+            // ── PHASE 2 (1:00 - 2:00): Medium ──
+            else if (kf < KITSUNE_PHASE2_END) {
+                if (frameCount % 100 == 0) {
+                    int cnt = 8;
+                    double rot = Math.toRadians(frameCount * 1.2);
+                    for (int i = 0; i < cnt; i++) {
+                        double a = 2 * Math.PI * i / cnt + rot;
+                        enemyBullets.add(new KitsuneFoxFireBullet(cx, cy,
+                                Math.cos(a) * 1.2, Math.sin(a) * 1.2));
+                    }
+                }
+                if (frameCount % 37 == 0) {
+                    double dx = player.x - cx, dy2 = player.y - cy;
+                    double len = Math.sqrt(dx * dx + dy2 * dy2);
+                    if (len > 0) {
+                        double base = Math.atan2(dy2, dx);
+                        int lanceCount = 3;
+                        double gapAngle = 0.35;
+                        for (int i = 0; i < lanceCount; i++) {
+                            double offset = (i - lanceCount / 2) * gapAngle;
                             enemyBullets.add(new KitsuneLanceBullet(cx, cy,
                                     Math.cos(base + offset), Math.sin(base + offset)));
                         }
                     }
-
+                }
+                if (frameCount % 83 == 0) {
+                    for (int tail = 0; tail < 2; tail++) {
+                        double sweepBase = Math.toRadians(45 + tail * 90);
+                        for (int s = 0; s < 5; s++) {
+                            double a = sweepBase + Math.toRadians(s * 10);
+                            enemyBullets.add(new KitsuneLanceBullet(cx, cy,
+                                    Math.cos(a), Math.sin(a)));
+                        }
+                    }
+                    playKitsuneSweepSound();
                 }
             }
-            // Tail sweep — light red bullets
-            // Tail sweep — light red bullets
-            if (frameCount % 83 == 0) {
-                for (int tail = 0; tail < 3; tail++) {
-                    double sweepBase = Math.toRadians(30 + tail * 60);
-                    for (int s = 0; s < 6; s++) {
-                        double a = sweepBase + Math.toRadians(s * 8);
-                        enemyBullets.add(new KitsuneLanceBullet(cx, cy,
-                                Math.cos(a), Math.sin(a)));
+            // ── PHASE 3 (2:00 - 2:40): Heavy ──
+            else if (kf < KITSUNE_PHASE3_END) {
+                if (frameCount % 70 == 0) {
+                    int cnt = 10;
+                    double rot = Math.toRadians(frameCount * 1.5);
+                    for (int i = 0; i < cnt; i++) {
+                        double a = 2 * Math.PI * i / cnt + rot;
+                        enemyBullets.add(new KitsuneFoxFireBullet(cx, cy,
+                                Math.cos(a) * 1.5, Math.sin(a) * 1.5));
                     }
                 }
-                playKitsuneSweepSound();
+                if (frameCount % 30 == 0) {
+                    double dx = player.x - cx, dy2 = player.y - cy;
+                    double len = Math.sqrt(dx * dx + dy2 * dy2);
+                    if (len > 0) {
+                        double base = Math.atan2(dy2, dx);
+                        int lanceCount = 5;
+                        double gapAngle = 0.28;
+                        for (int i = 0; i < lanceCount; i++) {
+                            double offset = (i - lanceCount / 2) * gapAngle;
+                            if (i % 2 == 0)
+                                enemyBullets.add(new KitsuneLanceBullet(cx, cy,
+                                        Math.cos(base + offset), Math.sin(base + offset)));
+                        }
+                    }
+                }
+                if (frameCount % 65 == 0) {
+                    for (int tail = 0; tail < 3; tail++) {
+                        double sweepBase = Math.toRadians(30 + tail * 60);
+                        for (int s = 0; s < 6; s++) {
+                            double a = sweepBase + Math.toRadians(s * 9);
+                            enemyBullets.add(new KitsuneLanceBullet(cx, cy,
+                                    Math.cos(a), Math.sin(a)));
+                        }
+                    }
+                    playKitsuneSweepSound();
+                }
+            }
+            // ── PHASE 4 (2:40 - 3:00): Final Burst ──
+            else {
+                // Dense fox fire
+                if (frameCount % 45 == 0) {
+                    int cnt = 12;
+                    double rot = Math.toRadians(frameCount * 2.5);
+                    for (int i = 0; i < cnt; i++) {
+                        double a = 2 * Math.PI * i / cnt + rot;
+                        enemyBullets.add(new KitsuneFoxFireBullet(cx, cy,
+                                Math.cos(a) * 1.8, Math.sin(a) * 1.8));
+                    }
+                }
+                // Rapid aimed lances
+                if (frameCount % 20 == 0) {
+                    double dx = player.x - cx, dy2 = player.y - cy;
+                    double len = Math.sqrt(dx * dx + dy2 * dy2);
+                    if (len > 0) {
+                        double base = Math.atan2(dy2, dx);
+                        int lanceCount = 7;
+                        double gapAngle = 0.22;
+                        for (int i = 0; i < lanceCount; i++) {
+                            double offset = (i - lanceCount / 2) * gapAngle;
+                            if (i % 2 == 0)
+                                enemyBullets.add(new KitsuneLanceBullet(cx, cy,
+                                        Math.cos(base + offset), Math.sin(base + offset)));
+                        }
+                    }
+                }
+                // Full tail sweeps
+                if (frameCount % 50 == 0) {
+                    for (int tail = 0; tail < 5; tail++) {
+                        double sweepBase = Math.toRadians(tail * 72);
+                        for (int s = 0; s < 6; s++) {
+                            double a = sweepBase + Math.toRadians(s * 8);
+                            enemyBullets.add(new KitsuneLanceBullet(cx, cy,
+                                    Math.cos(a), Math.sin(a)));
+                        }
+                    }
+                    playKitsuneSweepSound();
+                }
             }
         }
         // Wave 11+: dense symmetric mandala + rotating cross + aimed 5-way spread
@@ -4008,6 +4201,8 @@ public class BulletHellGame extends JPanel
         viperPoisonStacks = 0;
         viperPoisonTimer = 0;
         viperPoisonTickTimer = 0;
+        kitsuneTimerFrames = 0;
+        rocketCooldown = 0;
         gameState = STATE_PLAYING;
     }
 
@@ -4378,7 +4573,7 @@ public class BulletHellGame extends JPanel
             this.y = (int) by;
             this.waveNum = wave;
             this.isApex = (wave % 5 == 0 && wave != 10);
-            maxHp = hp = isApex ? (10 + wave * 20) * 1.1 : (waveNum == 10 ? 150 : Math.min(125, 10 + wave * 20));
+            maxHp = hp = isApex ? (10 + wave * 20) * 1.1 : (waveNum == 10 ? 1000 : Math.min(125, 10 + wave * 20));
             laserInterval = isApex ? Math.max(120, 260 - wave * 8) : 999999;
             laserCooldown = isApex ? laserInterval / 2 : 999999;
         }
@@ -5847,6 +6042,85 @@ public class BulletHellGame extends JPanel
             g3.drawPolygon(bladeX, bladeY, 6);
 
             g3.setStroke(new BasicStroke(1));
+            g3.dispose();
+        }
+    }
+
+    class RocketBullet extends Bullet {
+        final java.util.Deque<double[]> trail = new java.util.ArrayDeque<>();
+        int age = 0;
+
+        RocketBullet(double x, double y, double vx, double vy) {
+            super(x, y, vx, vy, new Color(255, 140, 0), false);
+            this.size = 10;
+        }
+
+        @Override
+        void update() {
+            trail.addFirst(new double[] { x, y });
+            if (trail.size() > 18)
+                trail.removeLast();
+            age++;
+            // Curve delay — rocket flies forward first 20 frames then homes
+            if (age > 20 && boss != null && boss.alive) {
+                double tx = boss.x + boss.width / 2.0 - x;
+                double ty = boss.y + boss.height / 2.0 - y;
+                double len = Math.sqrt(tx * tx + ty * ty);
+                if (len > 0) {
+                    double targetVx = (tx / len) * 16.0;
+                    double targetVy = (ty / len) * 16.0;
+                    // Slow turn rate = visible curve arc
+                    dx += (targetVx - dx) * 0.06;
+                    dy += (targetVy - dy) * 0.06;
+                    double spd = Math.sqrt(dx * dx + dy * dy);
+                    double maxSpd = 16.0;
+                    if (spd > maxSpd) {
+                        dx = dx / spd * maxSpd;
+                        dy = dy / spd * maxSpd;
+                    }
+                }
+            }
+            x += dx;
+            y += dy;
+        }
+
+        @Override
+        void draw(Graphics2D g2) {
+            // Trail
+            int ti = 0;
+            for (double[] tp : trail) {
+                float ta = (float) (trail.size() - ti) / trail.size();
+                int r = (int) (255 * ta), g3 = (int) (100 * ta), b = 0;
+                g2.setColor(new Color(r, g3, b, (int) (180 * ta * ta)));
+                int tsz = Math.max(1, (int) (8 * ta));
+                g2.fillOval((int) tp[0] - tsz / 2, (int) tp[1] - tsz / 2, tsz, tsz);
+                ti++;
+            }
+            // Glow
+            g2.setColor(new Color(255, 200, 50, 80));
+            g2.fillOval((int) x - 14, (int) y - 14, 28, 28);
+            // Body
+            double angle = Math.atan2(dy, dx);
+            Graphics2D g3 = (Graphics2D) g2.create();
+            g3.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g3.translate((int) x, (int) y);
+            g3.rotate(angle + Math.PI / 2);
+            // Rocket body
+            g3.setColor(new Color(200, 200, 220));
+            g3.fillRoundRect(-5, -14, 10, 22, 4, 4);
+            // Nose cone
+            g3.setColor(new Color(255, 80, 40));
+            g3.fillPolygon(new int[] { 0, -5, 5 }, new int[] { -18, -14, -14 }, 3);
+            // Fins
+            g3.setColor(new Color(180, 60, 30));
+            g3.fillPolygon(new int[] { -5, -10, -5 }, new int[] { 6, 12, 12 }, 3);
+            g3.fillPolygon(new int[] { 5, 10, 5 }, new int[] { 6, 12, 12 }, 3);
+            // Flame
+            float flicker = (float) (0.7 + 0.3 * Math.random());
+            g3.setColor(new Color(255, 150, 0, (int) (200 * flicker)));
+            g3.fillOval(-4, 8, 8, (int) (14 * flicker));
+            g3.setColor(new Color(255, 255, 100, (int) (160 * flicker)));
+            g3.fillOval(-2, 8, 4, (int) (8 * flicker));
             g3.dispose();
         }
     }
