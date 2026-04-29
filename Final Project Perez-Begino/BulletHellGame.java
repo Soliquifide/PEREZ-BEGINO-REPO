@@ -5930,7 +5930,7 @@ public class BulletHellGame extends JPanel
 
     class KitsuneLanceBullet extends Bullet {
         double speed;
-        static final double INITIAL_SPEED = 7.0;
+        static final double INITIAL_SPEED = 9.0;
         static final double MIN_SPEED = 4.5;
         static final double DECEL = 0.88;
         final java.util.Deque<double[]> trail = new java.util.ArrayDeque<>();
