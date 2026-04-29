@@ -834,7 +834,7 @@ public class BulletHellGame extends JPanel
                 damageIndicators.add(new DamageIndicator(
                         boss.x + rand.nextInt(boss.width),
                         boss.y + rand.nextInt(boss.height / 2),
-                        "-1", new Color(255, 220, 80)));
+                        "-" + (int) rocketDmg, new Color(255, 220, 80)));
                 // Drop a field powerup: only 1-in-60 chance AND respect cooldown
                 if (powerUpDropCD <= 0 && rand.nextInt(60) == 0) {
                     int dt = rand.nextInt(PU_COUNT);
@@ -951,7 +951,7 @@ public class BulletHellGame extends JPanel
                 continue;
             }
             if (!bossTransition && boss.alive && boss.getBounds().intersects(s.getBounds())) {
-                boss.hp -= 2;
+                boss.hp -= 200;
                 score += (shopScoreRush ? 30 : 15);
                 s.dead = true;
                 damageIndicators.add(new DamageIndicator(
@@ -3432,8 +3432,8 @@ public class BulletHellGame extends JPanel
             player.draw(g2);
 
         if (player.alive) {
-            boolean canShow = selectedClass == CLASS_MACHINE_GUNNER ? !overheated
-                    : (!novaLaserActive && novaCooldownTimer == 0);
+            boolean canShow = wave != 10 && (selectedClass == CLASS_MACHINE_GUNNER ? !overheated
+                    : (!novaLaserActive && novaCooldownTimer == 0));
             if (canShow) {
                 int pcx = player.x + player.size / 2, pcy = player.y + player.size / 2;
                 g2.setColor(new Color(255, 50, 50, 200));
