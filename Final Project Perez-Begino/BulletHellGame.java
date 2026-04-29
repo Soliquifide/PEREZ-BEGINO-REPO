@@ -951,7 +951,7 @@ public class BulletHellGame extends JPanel
                 continue;
             }
             if (!bossTransition && boss.alive && boss.getBounds().intersects(s.getBounds())) {
-                boss.hp -= 200;
+                boss.hp -= 2;
                 score += (shopScoreRush ? 30 : 15);
                 s.dead = true;
                 damageIndicators.add(new DamageIndicator(
